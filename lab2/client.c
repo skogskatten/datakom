@@ -1,6 +1,6 @@
 /* File: client.c
  * Name: Client program
- * Authors: Adam ######, Alfred ########
+ * Authors: ##### ######, #### ########
  * Description: Trying out socket communication between processes using the Internet protocol family.
  * Usage: client [host name], that is, if a server is running on 'lab1-6.idt.mdh.se'
  * then type 'client lab1-6.idt.mdh.se' and follow the on-screen instructions.

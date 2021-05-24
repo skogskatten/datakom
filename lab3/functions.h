@@ -17,9 +17,22 @@
 #include <netdb.h>
 #include <string.h>
 
-#include <functions.c>
+#define MAX_MSG_LEN 512
+#define PORT_NUM   5555
 
-//add package struct here
+/* rtp struct
+ * The reliable transfer protocol header.
+ * Contains all info needed for the protocol.
+ */
+typedef struct rtp_struct
+{
+    int flags;
+    int id;
+    int seq;
+    int windowsize;
+    int crc;
+    char *data;
+} rtp;
 
 /* makeSocket
  * Creates and names a socket in the Internet
@@ -34,14 +47,14 @@
 int makeSocket(u_int16_t port);
 
 /* writeMessage
- * Writes the string message to the file (socket) 
+ * Writes the rtp struct to the file (socket) 
  * denoted by fileDescriptor.
  */
-void writeMessage(int fileDescriptor, char *message);
+void writeMessage(int fileDescriptor, rtp *data);
 
 /* readMessageFromClient
- * Reads and prints data read from the file (socket
+ * Reads data from the file (socket)
  * denoted by the file descriptor 'fileDescriptor'.
  */
-int readMessage(int fileDescriptor);
+int readMessage(int fileDescriptor, rtp *data);
 

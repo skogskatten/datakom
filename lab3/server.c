@@ -5,12 +5,12 @@
  * Purpose:                                      *
  * ***********************************************/
 
-#include "functions.h"
+#include "functions.c"
 
 int main(void)
 {
     int listen_sock;
-
+    
     /* Create and initialize socket */
     printf("Initializing server.\n");
     listen_sock = makeSocket(PORT);
@@ -19,16 +19,17 @@ int main(void)
     printf("Initialized, waiting for connections.\n");
     while(1)
     {
-        char buffer[MAXMSG];
-        int len;
-        struct sockaddr_in server_addr, client_addr;
-
+        int len, nOfBytes;
+        char buffer[MAX_MSG_LEN]
+        struct sockaddr_in client_addr
+        
         len = sizeof(client_addr);
+        nOfBytes = recvfrom(listen_sock, (char *)buffer, MAX_MSG_LEN,
+                    MSG_WAITALL, (struct sockaddr*) &client_addr,
+                    &len);
         
-        recvfrom(listen_sock, (char *)buffer, MAXMSG, MSG_WAITALL,
-                (struct sockaddr *) &client_addr, &len);
-        
-        printf("Client: %s\n", buffer);
+        if(nOfBytes > 0)
+            printf("Client: %s\n", buffer);
     }
     
     return 0;

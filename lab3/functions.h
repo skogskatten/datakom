@@ -17,6 +17,7 @@
 #include <netdb.h>
 #include <string.h>
 
+#define DATA_LEN 1000
 #define MAX_MSG_LEN 512
 #define PORT_NUM   5555
 
@@ -26,12 +27,13 @@
  */
 typedef struct rtp_struct
 {
-    int flags;
-    int id;
-    int seq;
-    int windowsize;
-    int crc;
+    unsigned char flags;      
+    unsigned char id;
+    unsigned int seq;
+    unsigned char windowsize;
+    unsigned int crc;
     char *data;
+    unsigned char error;
 } rtp;
 
 /* makeSocket
@@ -45,6 +47,11 @@ typedef struct rtp_struct
  * actual address.
  */
 int makeSocket(u_int16_t port, struct sockaddr_in *name);
+
+/* ADD DESCRIPTION HERE */
+int serialize(rtp *header, unsigned char *ser_header);
+
+int deserialize(rtp *header, unsigned char *ser_header);
 
 /* writeMessage
  * Writes the rtp struct to the file (socket) 

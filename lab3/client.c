@@ -17,6 +17,10 @@ int main(void)
     sock = makeSocket(PORT_NUM, &server_addr);
     
     /* Connect to address */
+    /* "If the socket sockfd is of type SOCK_DGRAM, then addr is the
+     * address to which datagrams are sent by default, and the only
+     * address from which datagrams are received.
+     */
     if(connect(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
     {
         perror("connect");
@@ -29,7 +33,7 @@ int main(void)
     char message[] = {"HELLO"};
                 
     sendto(sock, message, strlen(message), 0,
-        (const struct sockaddr *) &server_addr, sizeof(server_addr));
+        (const struct sockaddr *) &NULL, sizeof(server_addr)); //NULL added in address field, test this
     
     printf("sent message, recieving next.. \n");
     

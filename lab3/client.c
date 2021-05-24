@@ -26,13 +26,22 @@ int main(void)
     /* Main program loop */
     printf("Initialized, sending messages.\n");
  
-    while(1)
-    {
-        char message[] = {"HELLO"};
+    char message[] = {"HELLO"};
                 
-        sendto(sock, message, strlen(message), 0,
-               (const struct sockaddr *) &server_addr, sizeof(server_addr));
-    }
+    sendto(sock, message, strlen(message), 0,
+        (const struct sockaddr *) &server_addr, sizeof(server_addr));
+    
+    printf("sent message, recieving next.. \n");
+    
+    int nOfBytes;
+        //unsigned int len;
+        char buffer[MAX_MSG_LEN];
+        //struct sockaddr_in client_addr;
+        
+        //len = sizeof(server_addr);
+        nOfBytes = recvfrom(sock, (char *)buffer, MAX_MSG_LEN, 0, NULL, NULL);
+        if(nOfBytes > 0)
+            printf("Server: %s\n", buffer);
     
     return 0;
 }

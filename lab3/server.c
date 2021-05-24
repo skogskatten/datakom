@@ -25,12 +25,11 @@ int main(void)
     
     /* Main program loop */
     printf("Initialized, waiting for connections.\n");
-    while(1)
-    {
+    
         int nOfBytes;
         unsigned int len;
         char buffer[MAX_MSG_LEN];
-        struct sockaddr_in client_addr;
+        struct sockaddr_in client_addr; //this is address of client
         
         len = sizeof(client_addr);
         nOfBytes = recvfrom(sock, (char *)buffer, MAX_MSG_LEN, MSG_WAITALL, (struct sockaddr*) &client_addr,
@@ -38,7 +37,13 @@ int main(void)
         
         if(nOfBytes > 0)
             printf("Client: %s\n", buffer);
-    }
+        
+        printf("sending message");
+        char message[] = {"YOOOO"};
+                
+        sendto(sock, message, strlen(message), 0,
+            (const struct sockaddr *) &client_addr, sizeof(client_addr));
+ 
     
     return 0;
 }

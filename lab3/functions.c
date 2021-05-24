@@ -7,10 +7,9 @@
 
 #include "functions.h"
 
-int makeSocket(u_int16_t port)
+int makeSocket(u_int16_t port, struct *sockaddr_in name)
 {
     int sock, value_one = 1;
-    struct sockaddr_in name;
 
     /* Create socket */
     sock = socket(PF_INET, SOCK_DGRAM, 0);
@@ -20,22 +19,15 @@ int makeSocket(u_int16_t port)
         exit(EXIT_FAILURE);
     }
 
-    memset(&name, 0, sizeof(name));
+    memset(name, 0, sizeof(*name));
     
     /* Give socket a name, port nr and address. */
-    name.sin_family = AF_INET;
-    name.sin_port = htons(port);
-    name.sin_addr.s_addr = htonl(INADDR_ANY);
+    name->sin_family = AF_INET;
+    name->sin_port = htons(port);
+    name->sin_addr.s_addr = htonl(INADDR_ANY);
     
     /* Set socket options */
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &value_one, sizeof(value_one));
-
-    /* Assign address to socket */
-    if(bind(sock, (struct sockaddr *) &name, sizeof(name)) < 0)
-    {
-        perror("bind");
-        exit(EXIT_FAILURE);
-    }
     
     return sock;
 }

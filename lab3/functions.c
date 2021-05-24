@@ -7,7 +7,7 @@
 
 #include "functions.h"
 
-int makeSocket(u_int16_t port, struct *sockaddr_in name)
+int makeSocket(u_int16_t port, struct sockaddr_in *name)
 {
     int sock, value_one = 1;
 

@@ -5,7 +5,7 @@
  * Purpose: Contain shared functions             *
  * ***********************************************/
 
-#include <functions.h>
+#include "functions.h"
 
 int makeSocket(u_int16_t port)
 {
@@ -26,6 +26,9 @@ int makeSocket(u_int16_t port)
     name.sin_family = AF_INET;
     name.sin_port = htons(port);
     name.sin_addr.s_addr = htonl(INADDR_ANY);
+    
+    /* Set socket options */
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &value_one, sizeof(value_one));
     
     /* Assign address to socket */
     if(bind(sock, (struct sockaddr *) &name, sizeof(name)) < 0)

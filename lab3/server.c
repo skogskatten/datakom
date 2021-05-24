@@ -13,15 +13,15 @@ int main(void)
     
     /* Create and initialize socket */
     printf("Initializing server.\n");
-    listen_sock = makeSocket(PORT);
+    listen_sock = makeSocket(PORT_NUM);
     
     /* Main program loop */
     printf("Initialized, waiting for connections.\n");
     while(1)
     {
         int len, nOfBytes;
-        char buffer[MAX_MSG_LEN]
-        struct sockaddr_in client_addr
+        char buffer[MAX_MSG_LEN];
+        struct sockaddr_in client_addr;
         
         len = sizeof(client_addr);
         nOfBytes = recvfrom(listen_sock, (char *)buffer, MAX_MSG_LEN,

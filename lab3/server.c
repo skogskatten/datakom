@@ -10,10 +10,18 @@
 int main(void)
 {
     int listen_sock;
+    struct sockaddr_in server_addr;
     
     /* Create and initialize socket */
     printf("Initializing server.\n");
-    listen_sock = makeSocket(PORT_NUM+45000);
+    listen_sock = makeSocket(PORT_NUM, &server_addr);
+    
+    /* Assign address to socket */
+    if(bind(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
+    {
+        perror("bind");
+        exit(EXIT_FAILURE);
+    }
     
     /* Main program loop */
     printf("Initialized, waiting for connections.\n");
@@ -33,4 +41,3 @@ int main(void)
     
     return 0;
 }
-

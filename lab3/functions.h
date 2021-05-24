@@ -44,7 +44,7 @@ typedef struct rtp_struct
  * the system replaces that with the machine's
  * actual address.
  */
-int makeSocket(u_int16_t port);
+int makeSocket(u_int16_t port, struct *sockaddr_in name)
 
 /* writeMessage
  * Writes the rtp struct to the file (socket) 

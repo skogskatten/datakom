@@ -14,10 +14,17 @@ int main(void)
     
     /* Create and initialize socket */
     printf("Initializing client.\n");
-    sock = makeSocket(PORT_NUM+46000);
+    sock = makeSocket(PORT_NUM, &server_addr);
+    
+    /* Connect to address */
+    if(connect(sock, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0)
+    {
+        perror("connect");
+        exit(EXIT_FAILURE);
+    }
     
     /* Main program loop */
-    printf("Initialized, waiting for connections.\n");
+    printf("Initialized, sending messages.\n");
  
     while(1)
     {
@@ -29,8 +36,3 @@ int main(void)
     
     return 0;
 }
-
-
-
-
-

@@ -32,6 +32,45 @@ int makeSocket(u_int16_t port, struct sockaddr_in *name)
     return sock;
 }
 
+//serialize
+//vilken storlek på int[]?
+//checksum
+int serialize(rtp *header, unsigned char *ser_header)
+{
+    ser_header[0] = rtp->flags;
+    ser_header[1] = rtp->id;
+    ser_header[2] = rtp->seq / 256; //high part
+    ser_header[3] = rtp->seq % 256; //low part
+    ser_header[4] = rtp->windowsize;
+    ser_header[5] = rtp->data;
+    ser_header[5 + DATA_LEN - 1] = '\n'; //makes sure to always keep null terminator
+    ser_header[5 + DATA_LEN] = make_checksum(ser_header);
+    
+    //return success or fail? else make void
+    return 0; 
+}
+
+//deserialize
+//errorcheck flagga
+int deserialize(rtp *header, unsigned char *ser_header)
+{
+    rtp->flags = ser_header[0];
+    rtp->id = ser_header[1];
+    rtp->seq = ser_header[2] * 256; //high part
+    rtp->seq += ser_header[3];  //low part
+    rtp->windowsize = ser_header[4];
+    rtp->data = ser_header[5];
+    rtp->error = check_checksum(ser_header[5 + DATA_LEN]);
+    
+    return rtp->error; //this good?
+}
+
+//read
+//use select to not block
+
+//write
+//add error code here
+
 void writeData(int fileDescriptor, char *message)
 {
 	int nOfBytes;

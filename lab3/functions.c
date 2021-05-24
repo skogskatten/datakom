@@ -29,14 +29,14 @@ int makeSocket(u_int16_t port)
     
     /* Set socket options */
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &value_one, sizeof(value_one));
-    
+
     /* Assign address to socket */
     if(bind(sock, (struct sockaddr *) &name, sizeof(name)) < 0)
     {
         perror("bind");
         exit(EXIT_FAILURE);
     }
-
+    
     return sock;
 }
 

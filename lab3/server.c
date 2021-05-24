@@ -10,10 +10,11 @@
 int main(void)
 {
     int listen_sock;
+    struct sockaddr_in server_addr;
     
     /* Create and initialize socket */
     printf("Initializing server.\n");
-    listen_sock = makeSocket(PORT_NUM);
+    listen_sock = makeSocket(PORT_NUM, server_addr);
     
     /* Main program loop */
     printf("Initialized, waiting for connections.\n");

@@ -32,7 +32,8 @@ int makeSocket(u_int16_t port, struct sockaddr_in *name)
     return sock;
 }
 
-void writeData(int fileDescriptor, char *message) {
+void writeData(int fileDescriptor, char *message)
+{
 	int nOfBytes;
 	printf("Writing: %s\n", message);
 	nOfBytes = write(fileDescriptor, message, strlen(message) + 1);
@@ -43,7 +44,8 @@ void writeData(int fileDescriptor, char *message) {
 	printf("Message sent\n");
 }
 
-int readData(int fileDescriptor, char *message) {
+int readData(int fileDescriptor, char *message)
+{
 	int nOfBytes;
 
 	nOfBytes = read(fileDescriptor, message, MAX_MSG_LEN);

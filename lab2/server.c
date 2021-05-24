@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <sys/times.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>

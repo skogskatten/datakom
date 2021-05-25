@@ -33,7 +33,7 @@ int main(void)
     char message[] = {"HELLO"};
                 
     sendto(sock, message, strlen(message), 0,
-        (const struct sockaddr *) &NULL, sizeof(server_addr)); //NULL added in address field, test this
+        (const struct sockaddr *) NULL, sizeof(server_addr)); //NULL added in address field, test this
     
     printf("sent message, recieving next.. \n");
     

@@ -5,7 +5,7 @@
  * Purpose:                                      *
  * ***********************************************/
 
-#include "functions.c"
+#include "../lab3/functions.c"
 
 int main(void)
 {
@@ -24,26 +24,17 @@ int main(void)
     }
     
     /* Main program loop */
-    printf("Initialized, waiting for connections.\n");
+    printf("Initialized, waiting for data.\n");
     
-        int nOfBytes;
-        unsigned int len;
-        char buffer[MAX_MSG_LEN];
-        struct sockaddr_in client_addr; //this is address of client
-        
-        len = sizeof(client_addr);
-        nOfBytes = recvfrom(sock, (char *)buffer, MAX_MSG_LEN, MSG_WAITALL, (struct sockaddr*) &client_addr,
-                    &len);
-        
-        if(nOfBytes > 0)
-            printf("Client: %s\n", buffer);
-        
-        printf("sending message");
-        char message[] = {"YOOOO"};
-                
-        sendto(sock, message, strlen(message), 0,
-            (const struct sockaddr *) &client_addr, sizeof(client_addr));
- 
+    rtp package;
+    print_rtp_header();
     
+    while(1)
+    {
+        recv_rtp(sock, &package, &server_addr);
+        
+        printf("[RECV] ");
+        print_rtp(&package);
+    }
     return 0;
 }

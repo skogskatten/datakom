@@ -54,13 +54,13 @@ int serialize(rtp *header, unsigned char *ser_header)
 //errorcheck flagga
 int deserialize(rtp *header, unsigned char *ser_header)
 {
-    rtp->flags = ser_header[0];
-    rtp->id = ser_header[1];
-    rtp->seq = ser_header[2] * 256; //high part
-    rtp->seq += ser_header[3];  //low part
-    rtp->windowsize = ser_header[4];
-    rtp->data = ser_header[5];
-    rtp->error = check_checksum(ser_header[5 + DATA_LEN]);
+    header->flags = ser_header[0];
+    header->id = ser_header[1];
+    header->seq = ser_header[2] * 256; //high part
+    header->seq += ser_header[3];  //low part
+    header->windowsize = ser_header[4];
+    header->data = ser_header[5];
+    header->error = check_checksum(ser_header[5 + DATA_LEN]);
     
     return rtp->error; //this good?
 }

@@ -42,7 +42,7 @@ int serialize(rtp *header, unsigned char *ser_header)
     ser_header[2] = header->seq / 256; //high part
     ser_header[3] = header->seq % 256; //low part
     ser_header[4] = header->windowsize;
-    ser_header[5] = header->data;
+    &ser_header[5] = header->data;
     ser_header[5 + MAX_MSG_LEN - 1] = '\n'; //makes sure to always keep null terminator
     ser_header[5 + MAX_MSG_LEN] = make_checksum(ser_header);
     

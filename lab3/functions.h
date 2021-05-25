@@ -22,7 +22,7 @@
  * and data arrays in bytes (i.e. UNSIGNED CHARS).
  */
 #define PACKAGE_LEN 128
-#define CHECKSUM_LEN 4
+#define CHECKSUM_LEN 1
 #define HEADER_LEN 5 + CHECKSUM_LEN
 #define MAX_DATA_LEN PACKAGE_LEN - HEADER_LEN
 
@@ -39,7 +39,7 @@ typedef struct rtp_struct
     unsigned int seq;
     unsigned char windowsize;
     unsigned char* data;
-    unsigned int crc;
+    unsigned char crc;
 } rtp;
 
 /* makeSocket
@@ -55,7 +55,7 @@ typedef struct rtp_struct
 int makeSocket(u_int16_t port, struct sockaddr_in *name);
 
 /* ADD DESCRIPTION HERE */
-unsigned int makeChecksum(const rtp *header);
+unsigned char makeChecksum(const rtp *header);
 
 /* ADD DESCRIPTION HERE */
 int checkChecksum(const rtp *header);
@@ -64,19 +64,11 @@ int checkChecksum(const rtp *header);
 void serialize(unsigned char *ser_header, const rtp *header);
 
 /* ADD DESCRIPTION HERE */
-int deserialize(rtp *header, unsigned char *ser_header);
+int deserialize(rtp *header, const unsigned char *ser_header);
 
-void send_rtp(int sockfd, const rtp* package, sockaddr_in *addr);
+void send_rtp(int sockfd, const rtp* package, struct sockaddr_in *addr);
 
-int recv_rtp(int sockfd, rtp* package, sockaddr_in addr*);
-
-/* writeMessage
- * Writes the rtp struct to the file (socket) 
- * denoted by fileDescriptor.
+/* recv_rtp 
+ * returns bytes read, if return < 0 checksum was wrong
  */
-
-/* readMessageFromClient
- * Reads data from the file (socket)
- * denoted by the file descriptor 'fileDescriptor'.
- */
-
+int recv_rtp(int sockfd, rtp* package, struct sockaddr_in *addr);

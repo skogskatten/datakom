@@ -32,7 +32,7 @@ int makeSocket(u_int16_t port, struct sockaddr_in *name)
     return sock;
 }
 
-unsigned int makeChecksum(const rtp *header)
+unsigned char makeChecksum(const rtp *header)
 {
     unsigned int checksum = 0;
     unsigned char temp_ser_header[HEADER_LEN];
@@ -43,15 +43,15 @@ unsigned int makeChecksum(const rtp *header)
     /* Sum all elements of package */
     for(int i = 0; i < (PACKAGE_LEN - CHECKSUM_LEN); i++)
     {
-        checksum += temp_ser_header[i];
+        checksum += temp_ser_header[i]; 
     }
     
-    return checksum;
+    return (unsigned char)(checksum % 256);
 }
 
 int checkChecksum(const rtp *header)
 {
-    if(makeChecksum == rtp->crc)
+    if(makeChecksum(header) == header->crc)
         return 0;
     else
         return -1;
@@ -66,7 +66,7 @@ void serialize(unsigned char *ser_header, const rtp *header)
     ser_header[3] = header->seq % 256; //low part
     ser_header[4] = header->windowsize;
     /* Add data at the right position after header */
-    memcpy(ser_header + HEADER_LEN, header->data, MAX_DATA_LEN);
+    memcpy(ser_header + 5, header->data, MAX_DATA_LEN);
 }
 
 int deserialize(rtp *header, const unsigned char *ser_header)
@@ -76,13 +76,13 @@ int deserialize(rtp *header, const unsigned char *ser_header)
     header->seq = ser_header[2] * 256; //high part
     header->seq += ser_header[3];      //low part
     header->windowsize = ser_header[4];
-    header->data = ser_header + 5;
-    header->checksum = ser_header + 6;
+    memcpy(header->data, ser_header + 5, MAX_DATA_LEN);
+    header->crc = ser_header[6];
     
     return checkChecksum(header);
 }
 
-void send_rtp(int sockfd, const rtp* package, sockaddr_in *addr)
+void send_rtp(int sockfd, const rtp *package, struct sockaddr_in *addr)
 {
     unsigned char ser_package[PACKAGE_LEN];
     
@@ -96,13 +96,14 @@ void send_rtp(int sockfd, const rtp* package, sockaddr_in *addr)
     }
 }
 
-int recv_rtp(int sockfd, rtp* package, sockaddr_in addr*)
+int recv_rtp(int sockfd, rtp *package, struct sockaddr_in *addr)
 {  
     int nOfBytes;
-    char buffer[PACKAGE_LEN];
+    unsigned int len = sizeof(addr);
+    unsigned char buffer[PACKAGE_LEN];
     
     if(recvfrom(sockfd, (unsigned char*)buffer, PACKAGE_LEN, MSG_WAITALL,
-             addr, sizeof(*addr)) < 0)
+              (struct sockaddr*) addr, &len) < 0)
     {
         perror("recvfrom");
         exit(EXIT_FAILURE);
@@ -112,7 +113,16 @@ int recv_rtp(int sockfd, rtp* package, sockaddr_in addr*)
         return -1;
     else
         return nOfBytes;
-        
-    
-    return nOfBytes;
+}
+
+void print_rtp_header()
+{
+    printf("FLAGS\tID\tSEQ\tWIN\tDATA\t\tCRC");
+}
+
+void print_rtp(rtp *package)
+{
+    printf("%02X\t%02X\t%02X\t%02X\t%s\t\t%02X",
+           package->flags, package->id, package->seq,
+           package->windowsize, package->data, package->crc);
 }

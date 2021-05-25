@@ -71,13 +71,11 @@ void serialize(unsigned char *ser_header, const rtp *header)
 
 int deserialize(rtp *header, const unsigned char *ser_header)
 {
-    printf("deser");
     header->flags = ser_header[0];
     header->id = ser_header[1];
     header->seq = ser_header[2] * 256; //high part
     header->seq += ser_header[3];      //low part
     header->windowsize = ser_header[4];
-    printf("memcpy time! :P");
     memcpy(header->data, ser_header + 5, MAX_DATA_LEN);
     header->crc = ser_header[6];
     
@@ -114,8 +112,6 @@ int recv_rtp(int sockfd, rtp *package, struct sockaddr_in *addr)
         perror("recvfrom");
         exit(EXIT_FAILURE);
     }
-    print_rtp(package);
-    printf("before deser\n");
     
     if(deserialize(package, buffer) < 0)
         return -1;

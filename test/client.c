@@ -5,7 +5,7 @@
  * Purpose: lab3                                 *
  * ***********************************************/
 
-#include "functions.c"
+#include "../lab3/functions.c"
 
 int main(void)
 {
@@ -27,25 +27,27 @@ int main(void)
         exit(EXIT_FAILURE);
     }
     
+    rtp package;
+    package.flags = 0;
+    package.id = sock;
+    package.seq = 0;
+    package.windowsize = 16;
+    memcpy(package.data, "Hello world!\0", sizeof("Hello world!\0"));
+    
     /* Main program loop */
     printf("Initialized, sending messages.\n");
- 
-    char message[] = {"HELLO"};
-                
-    sendto(sock, message, strlen(message), 0,
-        (const struct sockaddr *) NULL, sizeof(server_addr)); //NULL added in address field, test this
+    print_rtp_header();
     
-    printf("sent message, recieving next.. \n");
-    
-    int nOfBytes;
-        //unsigned int len;
-        char buffer[MAX_MSG_LEN];
-        //struct sockaddr_in client_addr;
+    while(1)
+    {
+        send_rtp(sock, &package, NULL);
         
-        //len = sizeof(server_addr);
-        nOfBytes = recvfrom(sock, (char *)buffer, MAX_MSG_LEN, 0, NULL, NULL);
-        if(nOfBytes > 0)
-            printf("Server: %s\n", buffer);
+        printf("[SENT] ");
+        print_rtp(&package);
+        
+        package.seq += 1;
+        usleep(1000000);
+    }
     
     return 0;
 }

@@ -21,7 +21,7 @@
  * Defines length of package, checksum, header
  * and data arrays in bytes (i.e. UNSIGNED CHARS).
  */
-#define PACKAGE_LEN 128
+#define PACKAGE_LEN 32
 #define CHECKSUM_LEN 1
 #define HEADER_LEN 5 + CHECKSUM_LEN
 #define MAX_DATA_LEN PACKAGE_LEN - HEADER_LEN
@@ -72,3 +72,7 @@ void send_rtp(int sockfd, const rtp* package, struct sockaddr_in *addr);
  * returns bytes read, if return < 0 checksum was wrong
  */
 int recv_rtp(int sockfd, rtp* package, struct sockaddr_in *addr);
+
+void print_rtp_header();
+
+void print_rtp(rtp *package);

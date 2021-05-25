@@ -17,8 +17,9 @@
 #include <netdb.h>
 #include <string.h>
 
-#define DATA_LEN 1000
-#define MAX_MSG_LEN 512
+#define DATA_LEN 128
+#define HEADER_LEN 8
+#define MAX_MSG_LEN DATA_LEN - HEADER_LEN
 #define PORT_NUM   5555
 
 /* rtp struct

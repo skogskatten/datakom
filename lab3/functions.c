@@ -32,72 +32,97 @@ int makeSocket(u_int16_t port, struct sockaddr_in *name)
     return sock;
 }
 
-//serialize
-//vilken storlek på int[]?
-//checksum
-int serialize(rtp *header, unsigned char *ser_header)
+unsigned char makeChecksum(const rtp *header)
 {
+    unsigned int checksum = 0;
+    unsigned char temp_ser_header[HEADER_LEN];
+    
+    /* temp store a ser_header */
+    serialize(temp_ser_header, header);
+    
+    /* Sum all elements of package */
+    for(int i = 0; i < (PACKAGE_LEN - CHECKSUM_LEN); i++)
+    {
+        checksum += temp_ser_header[i]; 
+    }
+    
+    return (unsigned char)(checksum % 256);
+}
+
+int checkChecksum(const rtp *header)
+{
+    if(makeChecksum(header) == header->crc)
+        return 0;
+    else
+        return -1;
+}
+
+void serialize(unsigned char *ser_header, const rtp *header)
+{
+    /* Add all header variables to their positions */
     ser_header[0] = header->flags;
     ser_header[1] = header->id;
     ser_header[2] = header->seq / 256; //high part
     ser_header[3] = header->seq % 256; //low part
     ser_header[4] = header->windowsize;
-    &ser_header[5] = header->data;
-    ser_header[5 + MAX_MSG_LEN - 1] = '\n'; //makes sure to always keep null terminator
-    ser_header[5 + MAX_MSG_LEN] = make_checksum(ser_header);
-    
-    //return success or fail? else make void
-    return 0; 
+    /* Add data at the right position after header */
+    memcpy(ser_header + 5, header->data, MAX_DATA_LEN);
 }
 
-//deserialize
-//errorcheck flagga
-int deserialize(rtp *header, unsigned char *ser_header)
+int deserialize(rtp *header, const unsigned char *ser_header)
 {
     header->flags = ser_header[0];
     header->id = ser_header[1];
     header->seq = ser_header[2] * 256; //high part
-    header->seq += ser_header[3];  //low part
+    header->seq += ser_header[3];      //low part
     header->windowsize = ser_header[4];
-    header->data = ser_header[5];
-    header->error = check_checksum(ser_header[5 + DATA_LEN]);
+    memcpy(header->data, ser_header + 5, MAX_DATA_LEN);
+    header->crc = ser_header[6];
     
-    return header->error; //this good?
+    return checkChecksum(header);
 }
 
-//read
-//use select to not block
-
-//write
-//add error code here
-
-void writeData(int fileDescriptor, char *message)
+void send_rtp(int sockfd, const rtp *package, struct sockaddr_in *addr)
 {
-	int nOfBytes;
-	printf("Writing: %s\n", message);
-	nOfBytes = write(fileDescriptor, message, strlen(message) + 1);
-	if(nOfBytes < 0) {
-		perror("writeMessage - Could not write data\n");
-		exit(EXIT_FAILURE);
-	}
-	printf("Message sent\n");
+    unsigned char ser_package[PACKAGE_LEN];
+    
+    serialize(ser_package, package);
+    makeChecksum(package);
+    if(sendto(sockfd, ser_package, PACKAGE_LEN, 0,
+              (const struct sockaddr *) addr, sizeof(*addr)) < 0)
+    {
+        perror("sendto");
+        exit(EXIT_FAILURE);
+    }
 }
 
-int readData(int fileDescriptor, char *message)
+int recv_rtp(int sockfd, rtp *package, struct sockaddr_in *addr)
+{  
+    int nOfBytes;
+    unsigned int len = sizeof(addr);
+    unsigned char buffer[PACKAGE_LEN];
+    
+    if(recvfrom(sockfd, (unsigned char*)buffer, PACKAGE_LEN, MSG_WAITALL,
+              (struct sockaddr*) addr, &len) < 0)
+    {
+        perror("recvfrom");
+        exit(EXIT_FAILURE);
+    }
+    
+    if(deserialize(package, buffer) < 0)
+        return -1;
+    else
+        return nOfBytes;
+}
+
+void print_rtp_header()
 {
-	int nOfBytes;
-
-	nOfBytes = read(fileDescriptor, message, MAX_MSG_LEN);
-	if(nOfBytes < 0) {
-		perror("Could not read data from client\n");
-		exit(EXIT_FAILURE);
-	}
-	else
-		if(nOfBytes == 0) 
-			/* End of file */
-			return(-1);
-		else 
-			/* Data read */
-	        return(0);
+    printf("FLAGS\tID\tSEQ\tWIN\tDATA\t\tCRC");
 }
 
+void print_rtp(rtp *package)
+{
+    printf("%02X\t%02X\t%02X\t%02X\t%s\t\t%02X",
+           package->flags, package->id, package->seq,
+           package->windowsize, package->data, package->crc);
+}

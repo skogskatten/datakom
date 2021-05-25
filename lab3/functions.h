@@ -17,9 +17,15 @@
 #include <netdb.h>
 #include <string.h>
 
-#define DATA_LEN 128
-#define HEADER_LEN 8
-#define MAX_MSG_LEN DATA_LEN - HEADER_LEN
+/* Data lengths
+ * Defines length of package, checksum, header
+ * and data arrays in bytes (i.e. UNSIGNED CHARS).
+ */
+#define PACKAGE_LEN 128
+#define CHECKSUM_LEN 1
+#define HEADER_LEN 5 + CHECKSUM_LEN
+#define MAX_DATA_LEN PACKAGE_LEN - HEADER_LEN
+
 #define PORT_NUM   5555
 
 /* rtp struct
@@ -28,13 +34,12 @@
  */
 typedef struct rtp_struct
 {
-    unsigned char flags;      
+    unsigned char flags; 
     unsigned char id;
     unsigned int seq;
     unsigned char windowsize;
-    unsigned int crc;
-    char *data;
-    unsigned char error;
+    unsigned char* data;
+    unsigned char crc;
 } rtp;
 
 /* makeSocket
@@ -50,19 +55,20 @@ typedef struct rtp_struct
 int makeSocket(u_int16_t port, struct sockaddr_in *name);
 
 /* ADD DESCRIPTION HERE */
-int serialize(rtp *header, unsigned char *ser_header);
+unsigned char makeChecksum(const rtp *header);
 
-int deserialize(rtp *header, unsigned char *ser_header);
+/* ADD DESCRIPTION HERE */
+int checkChecksum(const rtp *header);
 
-/* writeMessage
- * Writes the rtp struct to the file (socket) 
- * denoted by fileDescriptor.
+/* ADD DESCRIPTION HERE */
+void serialize(unsigned char *ser_header, const rtp *header);
+
+/* ADD DESCRIPTION HERE */
+int deserialize(rtp *header, const unsigned char *ser_header);
+
+void send_rtp(int sockfd, const rtp* package, struct sockaddr_in *addr);
+
+/* recv_rtp 
+ * returns bytes read, if return < 0 checksum was wrong
  */
-void writeMessage(int fileDescriptor, rtp *data);
-
-/* readMessageFromClient
- * Reads data from the file (socket)
- * denoted by the file descriptor 'fileDescriptor'.
- */
-int readMessage(int fileDescriptor, rtp *data);
-
+int recv_rtp(int sockfd, rtp* package, struct sockaddr_in *addr);

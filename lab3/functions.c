@@ -37,14 +37,14 @@ int makeSocket(u_int16_t port, struct sockaddr_in *name)
 //checksum
 int serialize(rtp *header, unsigned char *ser_header)
 {
-    ser_header[0] = rtp->flags;
-    ser_header[1] = rtp->id;
-    ser_header[2] = rtp->seq / 256; //high part
-    ser_header[3] = rtp->seq % 256; //low part
-    ser_header[4] = rtp->windowsize;
-    ser_header[5] = rtp->data;
-    ser_header[5 + DATA_LEN - 1] = '\n'; //makes sure to always keep null terminator
-    ser_header[5 + DATA_LEN] = make_checksum(ser_header);
+    ser_header[0] = header->flags;
+    ser_header[1] = header->id;
+    ser_header[2] = header->seq / 256; //high part
+    ser_header[3] = header->seq % 256; //low part
+    ser_header[4] = header->windowsize;
+    ser_header[5] = header->data;
+    ser_header[5 + MAX_MSG_LEN - 1] = '\n'; //makes sure to always keep null terminator
+    ser_header[5 + MAX_MSG_LEN] = make_checksum(ser_header);
     
     //return success or fail? else make void
     return 0; 

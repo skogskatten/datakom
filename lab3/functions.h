@@ -45,6 +45,14 @@
 #define STATE_TIMEOUT       12
 #define STATE_DISCONNECTED  13
 
+/* Package flags */ 
+#define FLAG_DATA    0
+#define FLAG_ACK     1
+#define FLAG_SYN     2
+#define FLAG_SYN_ACK 3
+#define FLAG_FIN     4
+#define FLAG_FIN_ACK 5
+
 /* rtp struct
  * The reliable transfer protocol header.
  * Contains all info needed for the protocol.

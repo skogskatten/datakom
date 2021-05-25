@@ -28,6 +28,23 @@
 
 #define PORT_NUM   5555
 
+/* Modes and states for state machines */
+#define MODE_AWAIT_CONNECT  0
+#define MODE_CONNECTED      1
+#define MODE_TEARDOWN       2
+
+#define STATE_WANT_CONNECT  3
+#define STATE_AWAIT_SYN_ACK 4
+#define STATE_CONNECTED     5
+#define STATE_AWAIT_ACK     6
+#define STATE_SEND          7
+#define STATE_LISTEN        8
+#define STATE_SHUTTING_DOWN 9
+#define STATE_AWAIT_FIN_ACK 10
+#define STATE_AWAIT_FIN     11
+#define STATE_TIMEOUT       12
+#define STATE_DISCONNECTED  13
+
 /* rtp struct
  * The reliable transfer protocol header.
  * Contains all info needed for the protocol.

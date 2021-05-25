@@ -47,55 +47,103 @@ int main(void)
 	  /*nedan följer pseudokod med förslag på tillståndsflöde. Fungerar endast för 1 klient? Kanske? Varje ny klient får, efter connect, en egen socket där meddelanden från klienten tas emot/skickas(?), vilket gör AWAIT_CONNECT inaktuellt för de andra socketarna, samtidig som socket 0, serverns "publika" socket aldrig lämnar uppkoppling. Borde funka bra med en if-sats som slänger ut alla klientbrevlådor ur AWAIT_CONNECT*/
 	  for(i = 0; i < FD_SETSIZE; i++)
 		{
-		if(FD_ISSET(i, read_fd_set))
-		  {
-		  switch(mode)
+		  if(FD_ISSET(i, read_fd_set))
 			{
-			  
-			case(AWAIT_CONNECT):
-			  //Only sock should ever enter this state
-			  if(curr != sock){
-				mode = CONNECTED;
-			  break;
-			  }
-			  // Listening
-			  // receives SYN / send SYN-ACK
-			  // state Wait
-			  // Receives ACK -> Connected OR timeout -> Listening
-			  break;
-			
-			case(CONNECTED):
-			  switch(state)
+			  switch(mode)
 				{
-			  case(RECIEVE): //wait
-				switch(event)
-				  {
-				case(PACKAGE_EXPECTED):
-				  //send ack
-				  break;
-				case(PACKAGE_WRONG):
-				  //send prev ack
-				  break;
-				case(PACKAGE_FIN):
-				  //switch mode teardown
-				  break;
-				}
-			  }
-			  break;
 			  
-			case(TEARDOWN): /* Server has received a FIN */
-			  // Send FIN-ACK
-			  // Shutting down, preparing to close connection
-			  // Send FIN
-			  // Waiting for FIN-ACK
-			  // Timeout -> disconnect OR ACK received -> disconnect
-			  break;
+				case(AWAIT_CONNECT):
+				  //Only sock should ever use this mode
+				  if(curr != sock){
+					mode = CONNECTED;
+					break;
+				  }
+				  switch(state)
+					{
+					  // Listening
+					case(LISTENING):
+					  // EVENT: receives SYN / send SYN-ACK -> state = Wait
+					  break;
+				  
+					case(WAITING_FOR_ACK):
+					  switch(event)
+						{
+					  
+						case(ACK):
+						  // ACK / Connect -> state = Connected
+						  break;
+					  
+						case(TIMEOUT):
+						  // Timeout / - -> state = LISTENING
+						  break;
+					  
+						}
+				  
+					  break;
+				  
+					case(CONNECTED):
+					  if(curr == sock)
+						state = LISTENING;
+					  else
+						{
+						  mode = CONNECTED;
+						  state = RECIEVE;
+						}
+					  break;
+					}
+				  break;
+			
+				case(CONNECTED):
+				  switch(state)
+					{
+					case(RECIEVE): //wait
+					  switch(event)
+						{
+						case(PACKAGE_EXPECTED):
+						  //send ack
+						  break;
+						case(PACKAGE_WRONG):
+						  //send prev ack
+						  break;
+						case(PACKAGE_FIN):
+						  // - / Send FIN-ACK -> mode =  TEARDOWN, state = SHUTTING_DOWN
+						  break;
+						}
+					}
+				  break;
 			  
-			default;
-			//no op
-			}//switch(mode)
-		}//if FD_ISSET
-	  }//for FD_SETSIZE
+				case(TEARDOWN): /* Server has received a FIN */
+				  switch(state)
+					{
+					case(SHUTTING_DOWN):
+					  // Shutting down, preparing to close connection
+					  // Do the needful / Send FIN -> state WAITING_FOR_FIN-ACK
+					  break;
+
+					case(WAITING_FOR_FIN-ACK):
+					  switch(event)
+						{
+						case(FIN-ACK):
+						  // - / Disconnect -> state = disconnected
+						  break;
+					  
+						case(TIMEOUT):
+						  // - / Disconnect -> state = disconnected
+						  break;
+						default:
+						  // Do nothing
+						  break;
+						}
+					  break;
+
+					  // DISCONNECTED
+				  
+					}
+				default;
+				//no op
+				}//switch(mode)
+			}//if FD_ISSET
+		}//for FD_SETSIZE
     }//while
     
   //  unlink((struct sockaddr *) &server_addr);

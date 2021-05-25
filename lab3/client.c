@@ -34,31 +34,35 @@ int main(void)
 		switch(mode)
 		  {
 			
-		  case(CONNECT):			
+		  case(CONNECT):
 			switch(state)
 			  {
 			  case(WANTS_TO_CONNECT):
-				//send SYN
-				//state = WAIT
+				//send SYN / - -> state = WAIT
 				break;
 				
 			  case(WAIT):
-				// receives SYN-ACK / Send ACK AND connect
-				// OR timeout / state = WANTS_TO_CONNECT
-				// state = connected -> mode = SENDING
+				switch(event)
+				  {					
+				  case(SYN-ACK):
+					// receives SYN-ACK / Send ACK AND connect -> mode = SENDING
+					break;
+				  case(TIMEOUT):
+					// timeout / - -> state = WANTS_TO_CONNECT					
+					break;
+				  }
 				break;
-				
 			  }
 			
 		  case(SENDING):
 			switch(event)
 			  {
-			  case(ACK):
+			  case(ACK): /* Skall vi kontrollera om korrekt N här eller innan switch? */
 				// if ACK expected / move window, reset timeout
 				// else if ACK ! expected / resend from ACK sequence number
 				break;
-
-			  case(NO_ACK):
+				
+			  case(NO_ACK): /* If-satser eller ytterliggare switch-case? Enklare med några if i det här fallet? */
 				// if window not full / send next packet, start timer
 				// else if timeout / resend from last and including N (?)
 				// else Window full / do nothing
@@ -70,16 +74,28 @@ int main(void)
 			switch(state)
 			  {
 			  case(CONNECTED):
-				// Shut down (wait for acks?) / Send FIN
-				// state = WAITING_FOR_ACK
+				// Shut down (wait for acks?) / Send FIN -> state = WAITING_FOR_ACK
 				break;
+					
 			  case(WAITING_FOR_ACK):
-				// Timeout / - -> state = TIMEOUT OR
-				// ACK received / - -> state = WAITING_FOR_FIN (from server) OR
-				// FIN received / send FIN-ACK -> state = WAITING_ACK_2(?*)
-				/* *Lägg ev till en variabel som talar om ifall  klient har mottagit en FIN eller ej. Då kan
-				  en återanvända samma WAITING_FOR_ACK-tillstånd */
+				switch(event)
+				  {
+				  case(timeout):
+					// Timeout / - -> state = TIMEOUT OR
+					break;
+						
+				  case(ACK):
+					// ACK received / - -> state = WAITING_FOR_FIN (from server) OR
+					break;
+
+				  case(FIN):
+					// FIN received / send FIN-ACK -> state = WAITING_ACK_2(?*)
+					break;
+					/* *Lägg till en variabel som talar om ifall  klient har mottagit en FIN eller ej. Då kan
+					   en återanvända samma WAITING_FOR_ACK-tillstånd */
+				  }
 				break;
+					
 			  case(WAITING_FOR_FIN):
 				// Timeout / - -> state = TIMEOUT OR
 				// FIN received / send FIN-ACK -> state = Timeout
@@ -87,26 +103,9 @@ int main(void)
 			  case(TIMEOUT):
 				//timeout / Close connection -> state = disconnected
 				break;
-				
 			  }
 		  }
 	  }
-    char message[] = {"HELLO"};
-                
-    sendto(sock, message, strlen(message), 0,
-        (const struct sockaddr *) NULL, sizeof(server_addr)); //NULL added in address field, test this
-    
-    printf("sent message, recieving next.. \n");
-    
-    int nOfBytes;
-        //unsigned int len;
-        char buffer[MAX_MSG_LEN];
-        //struct sockaddr_in client_addr;
-        
-        //len = sizeof(server_addr);
-        nOfBytes = recvfrom(sock, (char *)buffer, MAX_MSG_LEN, 0, NULL, NULL);
-        if(nOfBytes > 0)
-            printf("Server: %s\n", buffer);
-    
+	
     return 0;
 }

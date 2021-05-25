@@ -38,7 +38,7 @@ typedef struct rtp_struct
     unsigned char id;
     unsigned int seq;
     unsigned char windowsize;
-    unsigned char* data;
+    unsigned char data[MAX_DATA_LEN];
     unsigned char crc;
 } rtp;
 

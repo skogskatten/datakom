@@ -31,9 +31,10 @@ int main(void)
     
     while(1)
     {
-        recv_rtp(sock, &package, &server_addr);
-        
-        printf("[RECV] ");
+        if(recv_rtp(sock, &package, &server_addr) >= 0)
+            printf("[RECV] ");
+        else
+            printf("[TRSH] ");
         print_rtp(&package);
     }
     return 0;

@@ -32,7 +32,6 @@ int main(void)
     package.id = sock;
     package.seq = 0;
     package.windowsize = 16;
-    package.data = malloc(sizeof(unsigned char) * MAX_DATA_LEN);
     memcpy(package.data, "Hello world!\0", sizeof("Hello world!\0"));
     
     /* Main program loop */

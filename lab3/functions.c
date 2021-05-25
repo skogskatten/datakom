@@ -62,7 +62,7 @@ int deserialize(rtp *header, unsigned char *ser_header)
     header->data = ser_header[5];
     header->error = check_checksum(ser_header[5 + DATA_LEN]);
     
-    return rtp->error; //this good?
+    return header->error; //this good?
 }
 
 //read

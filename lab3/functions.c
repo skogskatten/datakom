@@ -37,7 +37,7 @@ unsigned char makeChecksum(const rtp *header)
     unsigned int checksum = 0;
     unsigned char temp_ser_header[PACKAGE_LEN - CHECKSUM_LEN];
     
-    /* temp store a ser_header */
+    /* Temp store a ser_header */
     serialize(temp_ser_header, header);
     
     /* Sum all elements of package */
@@ -65,7 +65,8 @@ void serialize(unsigned char *ser_header, const rtp *header)
     ser_header[2] = header->seq / 256; //high part
     ser_header[3] = header->seq % 256; //low part
     ser_header[4] = header->windowsize;
-    /* Add data at the right position after header */
+    
+    /* Add data string after header */
     memcpy(ser_header + 5, header->data, MAX_DATA_LEN);
 }
 
@@ -87,6 +88,10 @@ void send_rtp(int sockfd, const rtp *package, struct sockaddr_in *addr)
     unsigned char ser_package[PACKAGE_LEN];
     
     serialize(ser_package, package);
+    
+    /* Generate errors into ser_package[] here */
+    
+    /* *************************************** */
     
     ser_package[PACKAGE_LEN - CHECKSUM_LEN] = makeChecksum(package);
     
@@ -113,6 +118,7 @@ int recv_rtp(int sockfd, rtp *package, struct sockaddr_in *addr)
         exit(EXIT_FAILURE);
     }
     
+    /* Check for errors */
     if(deserialize(package, buffer) < 0)
         return -1;
     else

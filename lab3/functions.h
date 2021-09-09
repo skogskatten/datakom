@@ -17,14 +17,20 @@
 #include <netdb.h>
 #include <string.h>
 
+/* ERROR MODE
+ * 0 for no errors
+ * 1 to 100 for % errors
+ */
+#define ERROR_CHANCE 25
+
 /* Data lengths
  * Defines length of package, checksum, header
  * and data arrays in bytes (i.e. UNSIGNED CHARS).
  */
 #define PACKAGE_LEN 32
 #define CHECKSUM_LEN 1
-#define HEADER_LEN 5 + CHECKSUM_LEN
-#define MAX_DATA_LEN PACKAGE_LEN - HEADER_LEN
+#define HEADER_LEN 5
+#define MAX_DATA_LEN PACKAGE_LEN - HEADER_LEN - CHECKSUM_LEN
 
 #define PORT_NUM   5555
 

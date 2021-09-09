@@ -10,7 +10,11 @@
 int main(void)
 {
     int sock;
+    time_t t;
     struct sockaddr_in server_addr;
+    
+    /* Init rand */
+    srand((unsigned) time(&t));
     
     /* Create and initialize socket */
     printf("Initializing client.\n");

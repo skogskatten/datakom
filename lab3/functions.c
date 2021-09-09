@@ -80,8 +80,8 @@ int deserialize(rtp *header, const unsigned char *ser_header)
     header->seq += ser_header[3];      //low part
     header->windowsize = ser_header[4];
     memcpy(header->data, ser_header + 5, MAX_DATA_LEN);
-    header->crc = ser_header[6];
-    printf("de crc: %02X\n", ser_header[6]);
+    header->crc = ser_header[6 + MAX_DATA_LEN];
+    printf("de crc: %02X\n", ser_header[6 +MAX_DATA_LEN]);
     
     return checkChecksum(header);
 }
@@ -92,12 +92,14 @@ void send_rtp(int sockfd, const rtp *package, struct sockaddr_in *addr)
     
     serialize(ser_package, package);
     
-    /* Generate errors into ser_package[] here */
-    
-    /* *************************************** */
+
     
     ser_package[PACKAGE_LEN - CHECKSUM_LEN] = makeChecksum(package);
     printf("len %d\n", PACKAGE_LEN-CHECKSUM_LEN);
+    
+    /* Generate errors into ser_package[] here */
+    
+    /* *************************************** */
     
     if(sendto(sockfd, ser_package, PACKAGE_LEN, 0,
               (const struct sockaddr *) addr, sizeof(*addr)) < 0)

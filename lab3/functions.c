@@ -129,21 +129,20 @@ void send_rtp(int sockfd, rtp *package, struct sockaddr_in *addr)
                 printf("Header modified\n");
                 for(int i=0; i < HEADER_LEN; i++)
                 {
-                    ser_package[i] = (unsigned char)(ser_package[i]+rand()%256)%256;
+                    ser_package[i] = (unsigned char)(rand()%256);
                 }
                 break;
             case 1:
                 printf("Data modified\n");
                 for(int i=HEADER_LEN; i < HEADER_LEN + 12; i++)
                 {
-                    ser_package[i] = (unsigned char)(ser_package[i]+rand()%256)%256;
+                    ser_package[i] = (unsigned char)(ser_package[i]+rand()%16)%256;
                 }
                 ser_package[HEADER_LEN + 12] = '\0';
                 break;
             case 2:
                 printf("Checksum modified\n");
-                ser_package[PACKAGE_LEN-CHECKSUM_LEN] = 
-                    (unsigned char)(ser_package[PACKAGE_LEN-CHECKSUM_LEN]+rand()%256)%256;
+                ser_package[PACKAGE_LEN-CHECKSUM_LEN] = (unsigned char)(rand()%256);
                 break;
             default:
                 printf("Package lost\n");

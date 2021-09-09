@@ -91,7 +91,7 @@ void serialize(unsigned char *ser_header, const rtp *header);
 /* ADD DESCRIPTION HERE */
 int deserialize(rtp *header, const unsigned char *ser_header);
 
-void send_rtp(int sockfd, const rtp* package, struct sockaddr_in *addr);
+void send_rtp(int sockfd, rtp* package, struct sockaddr_in *addr);
 
 /* recv_rtp 
  * returns bytes read, if return < 0 checksum was wrong

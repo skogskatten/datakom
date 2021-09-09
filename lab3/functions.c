@@ -107,7 +107,7 @@ int deserialize(rtp *header, const unsigned char *ser_header)
     return checkChecksum(header);
 }
 
-void send_rtp(int sockfd, const rtp *package, struct sockaddr_in *addr)
+void send_rtp(int sockfd, rtp *package, struct sockaddr_in *addr)
 {
     unsigned char crc;
     unsigned char ser_package[PACKAGE_LEN];

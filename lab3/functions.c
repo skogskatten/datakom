@@ -136,7 +136,7 @@ void send_rtp(int sockfd, rtp *package, struct sockaddr_in *addr)
                 printf("Data modified\n");
                 for(int i=HEADER_LEN; i < HEADER_LEN + 12; i++)
                 {
-                    ser_package[i] = (unsigned char)(ser_package[i]+rand()%16)%256;
+                    ser_package[i] = (unsigned char)(32 + rand() % 95);
                 }
                 ser_package[HEADER_LEN + 12] = '\0';
                 break;
@@ -150,7 +150,6 @@ void send_rtp(int sockfd, rtp *package, struct sockaddr_in *addr)
                 break;
         }
     }
-    
     /* ###### Error generation end ###### */
     
     if(sendto(sockfd, ser_package, PACKAGE_LEN, 0,

@@ -46,6 +46,8 @@ unsigned char makeChecksum(const rtp *header)
         checksum += temp_ser_header[i]; 
     }
     
+    printf("make crc: %02X\n", checksum);
+    
     return (unsigned char)(checksum % 256);
 }
 
@@ -79,6 +81,7 @@ int deserialize(rtp *header, const unsigned char *ser_header)
     header->windowsize = ser_header[4];
     memcpy(header->data, ser_header + 5, MAX_DATA_LEN);
     header->crc = ser_header[6];
+    printf("de crc: %02X\n", ser_header[6]);
     
     return checkChecksum(header);
 }

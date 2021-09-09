@@ -95,7 +95,7 @@ int deserialize(rtp *header, const unsigned char *ser_header)
     header->seq = ser_header[2] * 256; //high part
     header->seq += ser_header[3];      //low part
     header->windowsize = ser_header[4];
-    memcpy(header->data, ser_header + 5, MAX_DATA_LEN);
+    memcpy(header->data, ser_header + HEADER_LEN, MAX_DATA_LEN);
     header->crc = ser_header[31];
     
     return checkChecksum(header);
@@ -113,8 +113,47 @@ void send_rtp(int sockfd, rtp *package, struct sockaddr_in *addr)
     ser_package[PACKAGE_LEN - CHECKSUM_LEN] = crc;
     
     /* Generate errors into ser_package[] here */
+    if(ERROR_CHANCE > rand() % 100)
+    {
+        int rand_mod = rand() % 4;
+        /* Error mode
+        * 0 - Lose package
+        * 1 - Change header
+        * 2 - Change data
+        * 3 - Chance crc */
+        
+        printf("[ERR!] ");
+        switch(rand_mod)
+        {
+           case 0:
+                printf("Package lost");
+                return;
+                break;
+            case 1:
+                printf("Header modified");
+                for(int i=0; i < HEADER_LEN; i++)
+                {
+                    ser_package[i] = (unsigned char)(ser_package[i]+rand()%256)%256;
+                }
+                break;
+            case 2:
+                printf("Data modified");
+                for(int i=HEADER_LEN; i < MAX_DATA_LEN-1; i++)
+                {
+                    ser_package[i] = (unsigned char)(ser_package[i]+rand()%256)%256;
+                }
+                ser_package[i] = '\0';
+                break;
+            case 3:
+                printf("Checksum modified");
+                ser_package[PACKAGE_LEN-CHECKSUM_LEN] = 
+                    (unsigned char)(ser_package[PACKAGE_LEN-CHECKSUM_LEN]+rand()%256)%256;
+                break;
+            default:
+        }
+    }
     
-    /* *************************************** */
+    /* ###### Error generation end ###### */
     
     if(sendto(sockfd, ser_package, PACKAGE_LEN, 0,
               (const struct sockaddr *) addr, sizeof(*addr)) < 0)

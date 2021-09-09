@@ -46,8 +46,6 @@ unsigned char makeChecksum(const rtp *header)
         checksum += temp_ser_header[i]; 
     }
     
-    printf("make crc: %02X\n", checksum);
-    
     return (unsigned char)(checksum % 256);
 }
 
@@ -93,14 +91,15 @@ int deserialize(rtp *header, const unsigned char *ser_header)
 
 void send_rtp(int sockfd, const rtp *package, struct sockaddr_in *addr)
 {
+    unsigned char crc;
     unsigned char ser_package[PACKAGE_LEN];
     
     serialize(ser_package, package);
     
-
-    
-    ser_package[PACKAGE_LEN - CHECKSUM_LEN] = makeChecksum(package);
-    printf("len %d\n", PACKAGE_LEN-CHECKSUM_LEN);
+    /* Checksum is added to ser_package and original package here */
+    crc = makeChecksum(package);
+    ser_package[PACKAGE_LEN - CHECKSUM_LEN] = crc;
+    package->crc = crc;
     
     /* Generate errors into ser_package[] here */
     

@@ -80,7 +80,7 @@ typedef struct rtp_struct
 int makeSocket(u_int16_t port, struct sockaddr_in *name);
 
 /* ADD DESCRIPTION HERE */
-unsigned char makeChecksum(const rtp *header);
+unsigned char makeChecksum(rtp *header);
 
 /* ADD DESCRIPTION HERE */
 int checkChecksum(const rtp *header);

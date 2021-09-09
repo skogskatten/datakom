@@ -83,7 +83,7 @@ int deserialize(rtp *header, const unsigned char *ser_header)
     header->crc = ser_header[6 + MAX_DATA_LEN];
     printf("de crc: %02X\n", ser_header[6 + MAX_DATA_LEN]);
     
-    for(int i=0; i<MAX_PACKAGE_LEN; i++)
+    for(int i=0; i < PACKAGE_LEN; i++)
     {
         printf("de crc: %d %02X\n", i, ser_header[i]);
     }

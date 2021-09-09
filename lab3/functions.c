@@ -80,9 +80,9 @@ int deserialize(rtp *header, const unsigned char *ser_header)
     header->seq += ser_header[3];      //low part
     header->windowsize = ser_header[4];
     memcpy(header->data, ser_header + 5, MAX_DATA_LEN);
-    header->crc = ser_header[6 + MAX_DATA_LEN];
-    printf("de crc: %02X\n", ser_header[6 + MAX_DATA_LEN]);
+    header->crc = ser_header[31];
     
+    printf("de crc: %02X\n", ser_header[6 + MAX_DATA_LEN]);
     for(int i=0; i < PACKAGE_LEN; i++)
     {
         printf("de crc: %d %02X\n", i, ser_header[i]);

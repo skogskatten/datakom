@@ -97,6 +97,7 @@ void send_rtp(int sockfd, const rtp *package, struct sockaddr_in *addr)
     /* *************************************** */
     
     ser_package[PACKAGE_LEN - CHECKSUM_LEN] = makeChecksum(package);
+    printf("len %d\n", PACKAGE_LEN-CHECKSUM_LEN);
     
     if(sendto(sockfd, ser_package, PACKAGE_LEN, 0,
               (const struct sockaddr *) addr, sizeof(*addr)) < 0)

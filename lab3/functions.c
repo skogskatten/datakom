@@ -115,41 +115,40 @@ void send_rtp(int sockfd, rtp *package, struct sockaddr_in *addr)
     /* Generate errors into ser_package[] here */
     if(ERROR_CHANCE > rand() % 100)
     {
-        int rand_mod = rand() % 4;
+        int rand_mod = rand() % 5;
         /* Error mode
-        * 0 - Lose package
-        * 1 - Change header
-        * 2 - Change data
-        * 3 - Chance crc */
+        * default - Lose package
+        * 0 - Change header
+        * 1 - Change data
+        * 2 - Chance crc */
         
         printf("[ERR!] ");
         switch(rand_mod)
         {
-           case 0:
-                printf("Package lost");
-                return;
-                break;
-            case 1:
+            case 0:
                 printf("Header modified");
                 for(int i=0; i < HEADER_LEN; i++)
                 {
                     ser_package[i] = (unsigned char)(ser_package[i]+rand()%256)%256;
                 }
                 break;
-            case 2:
+            case 1:
                 printf("Data modified");
                 for(int i=HEADER_LEN; i < MAX_DATA_LEN-1; i++)
                 {
                     ser_package[i] = (unsigned char)(ser_package[i]+rand()%256)%256;
                 }
-                ser_package[i] = '\0';
+                ser_package[PACKAGE_LEN - 1] = '\0';
                 break;
-            case 3:
+            case 2:
                 printf("Checksum modified");
                 ser_package[PACKAGE_LEN-CHECKSUM_LEN] = 
                     (unsigned char)(ser_package[PACKAGE_LEN-CHECKSUM_LEN]+rand()%256)%256;
                 break;
             default:
+                printf("Package lost");
+                return;
+                break;
         }
     }
     

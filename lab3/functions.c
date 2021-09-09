@@ -32,7 +32,7 @@ int makeSocket(u_int16_t port, struct sockaddr_in *name)
     return sock;
 }
 
-unsigned char makeChecksum(const rtp *header)
+unsigned char makeChecksum(rtp *header)
 {
     unsigned int checksum = 0;
     unsigned char temp_ser_header[PACKAGE_LEN - CHECKSUM_LEN];
@@ -46,12 +46,30 @@ unsigned char makeChecksum(const rtp *header)
         checksum += temp_ser_header[i]; 
     }
     
-    return (unsigned char)(checksum % 256);
+    checksum = (unsigned char)(checksum % 256);
+    
+    header->crc = checksum;
+    
+    return checksum;
 }
 
 int checkChecksum(const rtp *header)
 {
-    if(makeChecksum(header) == header->crc)
+    unsigned int checksum = 0;
+    unsigned char temp_ser_header[PACKAGE_LEN - CHECKSUM_LEN];
+    
+    /* Temp store a ser_header */
+    serialize(temp_ser_header, header);
+    
+    /* Sum all elements of package */
+    for(int i = 0; i < PACKAGE_LEN - CHECKSUM_LEN; i++)
+    {
+        checksum += temp_ser_header[i]; 
+    }
+    
+    checksum = (unsigned char)(checksum % 256);
+    
+    if(checksum == header->crc)
         return 0;
     else
         return -1;
@@ -96,10 +114,9 @@ void send_rtp(int sockfd, const rtp *package, struct sockaddr_in *addr)
     
     serialize(ser_package, package);
     
-    /* Checksum is added to ser_package and original package here */
+    /* Checksum is added to ser_package */
     crc = makeChecksum(package);
     ser_package[PACKAGE_LEN - CHECKSUM_LEN] = crc;
-    package->crc = crc;
     
     /* Generate errors into ser_package[] here */
     

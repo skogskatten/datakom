@@ -5,17 +5,20 @@
  * Purpose: Contain shared functions             *
  * ***********************************************/
 
-#include <stdio.h>
+#include <arpa/inet.h>
+
 #include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/times.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <string.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
+
 
 /* ERROR MODE
  * 0 for no errors

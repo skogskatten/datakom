@@ -1,35 +1,20 @@
-/* #include<stdio.h> */
-/* #include<stdlib.h> */
-/* #include<unistd.h> */
-/* #include<string.h> */
-/* #include<sys/time.h> */
-/* #include<sys/types.h> */
-/* #include<sys/socket.h> // struct sockaddr */
-/* #include<arpa/inet.h> */
-/* #include<netinet/in.h> // För struct sockaddr_in */
 #include "functions.h"
 
 #define PORT 5555 // plus en port till för uppkopplad klient? portnummer skickas då vi syn-ack.
 #define MAXLINE 1024
 #define WINDOW_SIZE 5
-//MODE
-#define UNCONNECTED 0
-#define CONNECTED 1
-#define TEARDOWN 2
-//STATE
 //0.
 #define RESET -1
-//1. Awaiting connection
-#define LISTEN 0
-#define LISTEN_WAIT_SYNACKACK 1
-#define LISTEN_ACK_RECEIVED 2
-
 
 int main(int argc, char *argv[]) {
   int s_sockfd, c_sockfd, retval, mode, state, n = 0;
   fd_set active_fd, read_fd;
   char buffer[MAXLINE];
   char *msg;
+  rtp package;
+  unsigned char serialized_package;
+  int sequence_number = -1;
+  
   struct sockaddr_in s_addr,s_addr2, c_addr, c_addr2;
 
   FD_ZERO(&active_fd);
@@ -58,28 +43,28 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  mode = UNCONNECTED;
-  state = LISTEN;
+  mode = MODE_AWAIT_CONNECT;
+  state = STATE_LISTEN;
   switch(mode) {
   default :
     printf("Undefined case: mode. Exiting.\n");
     exit(EXIT_FAILURE);
-  case UNCONNECTED :
-    printf("MODE: UNCONNECTED.\n"); // Antar alla inkommande meddelanden är syn
+  case MODE_AWAIT_CONNECT :
+    printf("MODE: MODE_AWAIT_CONNECT.\n"); // Antar alla inkommande meddelanden är syn
     if(state == RESET)
-      state = LISTEN;
+      state = STATE_LISTEN;
     switch(state) {
     default :
       printf("Undefined case: unconnected state . Exiting.\n");
       exit(EXIT_FAILURE);
 
       
-    case LISTEN :
+    case STATE_LISTEN :
       printf("STATE: listening for syn.\n");
       
-      retval = recvfrom(s_sockfd, (void *)buffer, MAXLINE, 0 /* MSG_DONTWAIT */, (struct sockaddr *)&c_addr, &c_addrlen);
+      retval = recv_rtp(s_sockfd, &package, &c_addr);
       if(retval == -1) {
-	perror("Server, listening for connection");
+	perror("Server, listening for connection: received incorrect checksum.");
 	break;
       }
       else {
@@ -95,17 +80,20 @@ int main(int argc, char *argv[]) {
 
 	msg = "syn-ack";
 	printf("Sending: %s\n", msg);
-	if(sendto(c_sockfd, (const void *)msg, strlen(msg), 0, (const struct sockaddr *)&c_addr, c_addrlen) < 0) {
-	  perror("Server, sending syn-ack");
-	  close(c_sockfd);
-	  break;
-	}
+	
+	package.flags = FLAG_SYN_ACK;
+	package.id = s_sockfd;
+	//	memcpy((void *)&package.id, (const void *)&s_addr, sizeof(s_addr));
+	package.seq = sequence_number + 1;
+	memcpy(package.data, msg, strnlen(msg, MAX_DATA_LEN));
+	package.windowsize = WINDOW_SIZE;
 
-	state = LISTEN_WAIT_SYNACKACK;
+	send_rtp(c_sockfd, &package, &c_addr);
+	state = STATE_LISTEN_WAIT_SYNACKACK;
       }
 
 
-    case LISTEN_WAIT_SYNACKACK :
+    case STATE_LISTEN_WAIT_SYNACKACK :
       printf("STATE: waiting for syn-ack-ack.\n");
       FD_ZERO(&active_fd);
       FD_ZERO(&read_fd);
@@ -119,12 +107,12 @@ int main(int argc, char *argv[]) {
       case 0:
 	printf("Server, select c_sockfd: nothing to read. Returning to listen state.\n");
 	close(c_sockfd);
-	state = LISTEN;
+	state = STATE_LISTEN;
 	FD_ZERO(&active_fd);
 	break;
       default:
-	retval = recvfrom(c_sockfd, (void *)buffer, MAXLINE, MSG_DONTWAIT, (struct sockaddr *)&c_addr2, &c_addr2len);
-	if(retval == -1) {
+	retval = recv_rtp(c_sockfd, &package, &c_addr2);
+	if(retval < 0) {
 	  perror("Server, listening for syn-ack-ack");
 	  exit(EXIT_FAILURE);
 	}
@@ -134,62 +122,68 @@ int main(int argc, char *argv[]) {
 	  memset(&buffer, '\0', MAXLINE);
 
 
-	  retval = recv_rtp(c_sockfd, rtp *package, &c_addr2);
-	  state = LISTEN_ACK_RECEIVED;
+	  retval = recv_rtp(c_sockfd, &package, &c_addr2);
+	  state = STATE_LISTEN_ACK_RECEIVED;
 	
-      }
+	}
       
-    case LISTEN_ACK_RECEIVED :
-      printf("STATE: syn-ack-ack received.\n");
-      mode = CONNECTED;
-      state = RESET;
+      case STATE_LISTEN_ACK_RECEIVED :
+	printf("STATE: syn-ack-ack received.\n");
+	mode = MODE_CONNECTED;
+	state = RESET;
      
-    }
-    if(mode != CONNECTED)
-      break;
-
-
-    
-  case CONNECTED :
-    printf("MODE: CONNECTED.\n");
-    
-    while(mode == CONNECTED) {
-      read_fd = active_fd;
-
-
-      switch(select(c_sockfd + 1, &read_fd, NULL, NULL, NULL)) {
-      case -1:
-	perror("Server, select c_sockfd");
-	exit(EXIT_FAILURE);
-	
-      case 0:
-	printf("Server, select c_sockfd: nothing to read.\n");
+      }
+      if(mode != MODE_CONNECTED)
 	break;
-	
-      default:
-	retval = recvfrom(c_sockfd, (void *)buffer, MAXLINE, MSG_DONTWAIT, (struct sockaddr *)&c_addr2, &c_addr2len);
-	if(retval == -1) {
-	  perror("Server, listening for 1st message");
-	}
-	else {
-	  printf("Server, listening for 1st message: received %d bytes from %s.\n", retval, inet_ntoa(c_addr2.sin_addr));
-	  printf("Msg: %s\n", buffer);
-	  memset(&buffer, '\0', MAXLINE);
-	}
-      }
-      
-      if(sendto(c_sockfd, (void *)&n, sizeof(&n), 0, (struct sockaddr *)&c_addr2, c_addr2len) < 0){
-	perror("Server, send msg ack");
-	exit(EXIT_FAILURE);
-      }
 
-      n++;
-    }
+
     
-    //    break;
+    case MODE_CONNECTED :
+      printf("MODE: MODE_CONNECTED.\n");
+    
+      while(mode == MODE_CONNECTED) {
+	read_fd = active_fd;
+
+
+	switch(select(c_sockfd + 1, &read_fd, NULL, NULL, NULL)) {
+	case -1:
+	  perror("Server, select c_sockfd");
+	  exit(EXIT_FAILURE);
+	
+	case 0:
+	  printf("Server, select c_sockfd: nothing to read.\n");
+	  break;
+	
+	default:
+	  retval = recv_rtp(c_sockfd, &package, &c_addr2);
+	  if(retval < 0) {
+	    perror("Server, listening for 1st message");
+	  }
+	  else {
+	    printf("Server, listening for 1st message: received %d bytes from %s.\n", retval, inet_ntoa(c_addr2.sin_addr));
+	    printf("Msg: %s\n", buffer);
+	    memset(&buffer, '\0', MAXLINE);
+	  }
+	}
+
+	msg = "\0";
+	package.flags = FLAG_ACK;
+	package.id = s_sockfd;
+	//	memcpy((void *)&package.id, (const void *)&s_addr, sizeof(s_addr));
+	package.seq = sequence_number + 1;
+	memcpy(package.data, msg, strnlen(msg, MAX_DATA_LEN));
+	package.windowsize = WINDOW_SIZE;
+
+	send_rtp(c_sockfd, &package, &c_addr);
+	
+	n++;
+      }
+    
+      //    break;
   
-  case TEARDOWN :
-    printf("MODE: TEARDOWN\n");
+    case TEARDOWN :
+      printf("MODE: TEARDOWN\n");
+    }
   }
   
   usleep(5000);

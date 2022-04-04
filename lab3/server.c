@@ -15,7 +15,7 @@
 int main(int argc, char *argv[]) {
   int s_sockfd, c_sockfd, retval, mode, state, n = 0;
   fd_set active_fd, read_fd;
-
+  
   FD_ZERO(&active_fd);
   FD_ZERO(&read_fd);
   
@@ -25,14 +25,14 @@ int main(int argc, char *argv[]) {
   int sequence_number = -1;
   
   struct sockaddr_in s_addr,s_addr2, c_addr, c_addr2;
-
+  
   struct timeval read_timeout;
   
   memset(&s_addr, 0, sizeof(s_addr));
   memset(&s_addr2, 0, sizeof(s_addr2));
   memset(&c_addr, 0, sizeof(c_addr));
   memset(&c_addr2, 0, sizeof(c_addr2));
-
+  
   int s_addrlen = sizeof(s_addr), s_addr2len = sizeof(s_addr2),
     c_addrlen = sizeof(c_addr), c_addr2len = sizeof(c_addr2);
   
@@ -48,12 +48,12 @@ int main(int argc, char *argv[]) {
   s_addr.sin_port = htons(PORT);
   
   //	memcpy((void *)&package.id, (const void *)&s_addr, sizeof(s_addr));
-
+  
   if(bind(s_sockfd, (const struct sockaddr *) &s_addr, s_addrlen) < 0){
     perror("Exit, server socket address binding error");
     exit(EXIT_FAILURE);
   }
-
+  
   mode = MODE_AWAIT_CONNECT;
   state = STATE_LISTEN;
   switch(mode) {
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     default :
       printf("Undefined case: unconnected state . Exiting.\n");
       exit(EXIT_FAILURE);
-
+      
       
     case STATE_LISTEN :
       printf("STATE: listening for syn.\n");
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
       //      else {
       printf("Server, listening for connection: received %d bytes from %s.\n", retval, inet_ntoa(c_addr.sin_addr));
       printf("Msg: %s\n", packageReceived.data);
-      memset(&packageReceived, '\0', MAXLINE);
+      memset(&packageReceived.data, '\0', MAX_DATA_LEN);
 
       c_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
       if(c_sockfd < 0) {
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
 	//	else {
 	printf("Server, listening for syn-ack-ack: received %d bytes from %s.\n", retval, inet_ntoa(c_addr2.sin_addr));
 	printf("Msg: %s\n", packageReceived.data);
-	memset(&packageReceived, '\0', MAXLINE);
+	memset(&packageReceived.data, '\0', MAX_DATA_LEN);
 
 
 	retval = recv_rtp(c_sockfd, &packageReceived, &c_addr2);

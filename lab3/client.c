@@ -1,50 +1,35 @@
-/* #include<stdio.h> */
-/* #include<stdlib.h> */
-/* #include<unistd.h> */
-/* #include<string.h> */
-/* #include<sys/time.h> */
-/* #include<sys/types.h> */
-/* #include<sys/socket.h> // struct sockaddr */
-/* #include<arpa/inet.h> */
-/* #include<netinet/in.h> // För struct sockaddr_in */
-/* #include<netdb.h> */
 #include "functions.h"
-
+/* 1. Byt tillstånd och funktioner. 45%
+ * 2. Bygg upp teardown (sender). 30%
+ * 3. Sekvensnummer.
+ */
 #define PORT 5555
 #define MAXLINE 1024
 #define hostNameLength 50
-
+#define WINDOW_SIZE 5
 #define RESET -1
+#define SHORT_TIMEOUT 1
+#define MEDIUM_TIMEOUT 5
+#define LONG_TIMEOUT 10
 
-#define UNCONNECTED 0
-#define CONNECTED 1
-#define TEARDOWN 2
-
-#define WANTS_TO_CONNECT 0
-#define WAIT_FOR_SYNACK 1
-#define SYNACK_RECEIVED 2
-
-#define FIN_SENT_WAIT_ACK 0
-#define ACK_RECVD_WAIT_FIN 1
-#define FIN_RECVD_WAIT_ACK 2
-#define TIMEOUT 3
-#define DISCONNECTED 4
+void CleanRtpData(rtp *toClean);
 
 int main(int argc, char *argv[]) {
-  int sockfd, retval, mode, state, n;
+  int sockfd, retval, mode, state;
+  int lastSeqSent = -1, lastSeqReceived = -1;
+  int timeoutCounter = 0;
   char buffer[MAXLINE];
   char hostName[hostNameLength];
-  char *msg;
-  struct sockaddr_in s_addr,c_addr;
+  char *msg, windowSize;
+  rtp packageToSend, packageReceived;
+  
+  struct sockaddr_in s_addr, c_addr;
   fd_set read_fd, write_fd, active_fd;
   FD_ZERO(&read_fd);
   FD_ZERO(&write_fd);
   FD_ZERO(&active_fd);
-
-  struct timeval read_timeout;
-  read_timeout.tv_sec = 1;
-  read_timeout.tv_usec = 0;
   
+  struct timeval read_timeout;
   
   /* Check arguments */
   if(argv[1] == NULL) {
@@ -62,20 +47,26 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  /* if(setsockopt(sockfd, SOL_SOCKET, SO_RECVTIMEO, (const void *)&read_timeout, sizeof(read_timeout)) < 0) { */
-  /*   perror("Client, setting sockopt"); */
-  /*   exit(EXIT_FAILURE); */
-  /* } */
+  FD_SET(sockfd, &active_fd);
   
-  int s_addrlen = sizeof(s_addr), c_addrlen = sizeof(c_addr);
+  
+  int s_addrlen = sizeof(s_addr);
   
   memset(&buffer, 0, MAXLINE);
   memset(&s_addr, 0, s_addrlen);
+  memset(&c_addr, 0, sizeof(c_addr));
+
+  c_addr.sin_family = AF_INET;
+  c_addr.sin_port = htons(PORT);
+  c_addr.sin_addr.s_addr = INADDR_ANY;
   
+  memcpy((void *)&packageToSend.id, (const void *)&c_addr, sizeof(c_addr));
+
   struct hostent *hostInfo; /* Contains info about the host */
+
   hostInfo = gethostbyname(hostName);
   if(hostInfo == NULL) {
-    fprintf(stderr, "initSocketAddress - Unknown host %s\n",hostName);
+    fprintf(stderr, "initSocketAddress - Unknown host %s\n", hostName);
     exit(EXIT_FAILURE);
   }
   
@@ -83,110 +74,262 @@ int main(int argc, char *argv[]) {
   s_addr.sin_family = AF_INET;
   s_addr.sin_port = htons(PORT);
 
-  mode = UNCONNECTED;
-  state = WANTS_TO_CONNECT;
-  n = 0;
+
+  /*  BEGINNING OF STATES  */
+  
+  mode = MODE_AWAIT_CONNECT;
+  state = STATE_WANT_CONNECT;
+  
   switch(mode) {
   default :
     printf("Undefined case: mode . Exiting.\n");
     exit(EXIT_FAILURE);
 
-  case UNCONNECTED :
+  case MODE_AWAIT_CONNECT:
     printf("MODE: unconnected.\n");
 
     switch(state) {
     default :
       printf("Undefined case: state . Exiting.\n");
       exit(EXIT_FAILURE);
+
       
-    case WANTS_TO_CONNECT :
+    case STATE_WANT_CONNECT :
       printf("STATE: wants to connect.\n");
-      msg = "syn";
-      if(sendto(sockfd, (const void *)msg, strlen(msg), 0, (const struct sockaddr *)&s_addr, s_addrlen) < 0){
-	perror("Sendto");
-	exit(EXIT_FAILURE);
-      }
-      printf("Msg sent.\n");
-      state = WAIT_FOR_SYNACK;
+      packageToSend.flags = FLAG_SYN;
+      windowSize =  WINDOW_SIZE;
+      CleanRtpData(&packageToSend);
+      memcpy(&packageToSend.data, &windowSize, sizeof(windowSize));
+      packageToSend.seq = lastSeqSent++;
+      send_rtp(sockfd, &packageToSend, &s_addr);
+            
+      printf("Sent:\n");
+      print_rtp(&packageToSend);
       
-    case WAIT_FOR_SYNACK :
+      state = STATE_AWAIT_SYN_ACK;
+
+      
+    case STATE_AWAIT_SYN_ACK :
       printf("STATE: wait for syn-ack.\n");
-      //lägg till timeout, select med timeval
-      usleep(5000);
-      if(retval = recvfrom(sockfd, (void *)buffer, MAXLINE, 0, (struct sockaddr *)&s_addr, &s_addrlen) < 0) {
-	perror("Client, receiving syn-ack");
-	exit(EXIT_FAILURE);
-      }
-      printf("Client, listening for syn-ack: received %d bytes from %s.\n", retval, inet_ntoa(s_addr.sin_addr));
-      printf("Msg: %s\n", buffer);
-      memset(&buffer, '\0', MAXLINE);
-      state = SYNACK_RECEIVED;
 
-    case SYNACK_RECEIVED :
-      printf("STATE: syn-ack received.\n");
-      /* går direkt från att skicka syn-ack-ack till att koppla upp, men om syn-ack-acken försvinner ansluter klienten men servern stänger buffern. */
-      /* lös ovan med att koppla ned om sändning inte fungerar sedan, timeout i connected */
-      msg = "syn-ack-ack";
-      if(sendto(sockfd, (void *)msg, strlen(msg), 0,(struct sockaddr *)&s_addr, s_addrlen) < 0) {
-	perror("Client, sending syn-ack-ack");
-	exit(EXIT_FAILURE);
-      }
-      mode = CONNECTED;
-    }
-    
-  case CONNECTED :
-    printf("MODE: CONNECTED.\n");
-    
-    msg = "Select nr.";
-    if(sendto(sockfd, (void *)msg, strlen(msg), 0,(struct sockaddr *)&s_addr, s_addrlen) < 0) {
-      perror("Client, sending first select msg");
-      exit(EXIT_FAILURE);
-    } //Lägg till timeout ifall syn-ack-ack kommer bort
-    if(retval = recvfrom(sockfd, (void *)buffer, MAXLINE, 0, (struct sockaddr *)&s_addr, &s_addrlen) < 0) {
-      perror("Client, receiving msg ack");
-      exit(EXIT_FAILURE);
-    }
-    //    printf("Received msg %d.\n",(int)buffer); DEBUG
-    printf("Received msg %s.\n", buffer);
-    memset(&buffer, '\0', MAXLINE);
-
-
-    /* Just nu faller den igenom alla TIMEOUT. behöver while loop alt. ex if-else för att skippa fall då gått till timeout */  
-  case TEARDOWN :
-    printf("MODE: TEARDOWN.\n");
-
-    msg = "FIN";
-    if(sendto(sockfd, (void *)msg, strlen(msg), 0,(struct sockaddr *)&s_addr, s_addrlen) < 0) {
-      perror("Client, sending first select msg");
-      exit(EXIT_FAILURE);
-    }
-
-    state = FIN_SENT_WAIT_ACK;
-    switch(state) {
-    case FIN_SENT_WAIT_ACK :
-      printf("STATE: FIN sent, awaiting ack.\n");
-      read_fd = active_fd;
-      retval = select(sockfd + 1, &read_fd, NULL, NULL, &read_timeout);
-      switch(retval) {
-      case -1 :
-	perror("Client, select");
-	exit(EXIT_FAILURE);
-      case 0 :
-	printf("Timeout, going to timeout state.\n");
-	state = TIMEOUT;
-	break;
-      default :
-	if(recvfrom(sockfd, (void *)buffer, MAXLINE, 0, (struct sockaddr *)&s_addr, &s_addrlen) < 0) {
-	  perror("Client, receiving fin-ack");
+      while(state == STATE_AWAIT_SYN_ACK) {
+	
+	read_timeout.tv_sec = SHORT_TIMEOUT;
+	read_timeout.tv_usec = 0;
+	read_fd = active_fd;
+	
+	switch(select(sockfd + 1, &read_fd, NULL, NULL, &read_timeout)) {
+	case -1:
+	  // error
+	  perror("MODE_CONNECT: Select for syn-ack failed");
 	  exit(EXIT_FAILURE);
+	case 0:
+	  // timeout
+	  printf("The server timed out. Returning to STATE_WANT_CONNECT.\n");
+	  state = STATE_WANT_CONNECT;
+	  break;
+	default:
+	  // read
+	  retval = recv_rtp(sockfd, &packageReceived, &s_addr);
+	  if (retval < 0) {
+	    printf("Checksum error.\n");
+	  }
+	  else if (packageReceived.flags == FLAG_SYN_ACK) {
+	    printf("STATE_AWAIT_SYN_ACK: SYN-ACK received:\n");
+	    print_rtp(&packageReceived);
+	    state = STATE_CONNECTED;
+	  }
+	  else {
+	    printf("Received: ");
+	    print_rtp(&packageReceived);
+	    printf("Still waiting for SYN-ACK.");
+	  }
 	}
-	printf("Received fin-ack.\n");
-	state = ACK_RECVD_WAIT_FIN;
       }
 
-    case ACK_RECVD_WAIT_FIN :
+      
+    case STATE_CONNECTED:
+      printf("STATE: STATE_CONNECTED.\n");
+
+      packageToSend.flags = FLAG_ACK;
+      CleanRtpData(&packageToSend);
+      packageToSend.seq = lastSeqSent++;
+      memcpy(&packageToSend.data, &lastSeqReceived, sizeof(lastSeqReceived));
+      send_rtp(sockfd, &packageToSend, &s_addr);
+      printf("STATE_CONNECTED: SYN-ACK-ACK sent, going to MODE_CONNECTED.\n");
+      mode = MODE_CONNECTED;
+    }
+
+
+
+    
+  case MODE_CONNECTED :
+    printf("MODE: MODE_CONNECTED.\n");
+    while (mode == MODE_CONNECTED) {
+
+      switch(state) {
+      case STATE_LISTEN:
+	read_timeout.tv_sec = SHORT_TIMEOUT;
+	read_timeout.tv_usec = 0;
+	read_fd = active_fd;
+	
+	switch(select(sockfd + 1, &read_fd, NULL, NULL, &read_timeout)) {
+	case -1:
+	  perror("MODE_CONNECTED: Select listening for incoming msgs failed");
+	  exit(EXIT_FAILURE);
+	case 0:
+	  printf("MODE_CONNECTED: ");
+	  timeoutCounter++;
+	  if (timeoutCounter >= 5 && timeoutCounter < 10) {
+	    // resend last package
+	  }
+	  else if (timeoutCounter >= 10) {
+	    printf("MODE_CONNECTED: Connection timed out, nothing to read. Going to MODE_TEARDOWN (sender state).\n");
+	    mode = MODE_TEARDOWN;
+	  }
+	  state = STATE_SEND;
+	  break;
+	default:
+	  timeoutCounter = 0;
+ 	  if(recv_rtp(sockfd, &packageReceived, &s_addr) < 0) {
+	    printf("MODE_CONNECTED: Received, checksum failed.");
+	    break;
+	  }
+
+	  // if (packageReceived.seq = lastSeqReceived + 1) {lastSeqReceived++}
+	  // receives packet in order, send ack N
+	  printf("Received: ");
+	  print_rtp(&packageReceived);
+
+	  // receives packet out of order, resend last ACK (latest received seq.num.).
+
+	  packageToSend.flags = FLAG_ACK;
+	  packageToSend.seq = lastSeqSent++; // Är det här lämpligt? Skall en ack öka seq?
+	  CleanRtpData(&packageToSend);
+	  memcpy(&packageToSend.data, &lastSeqReceived, sizeof(lastSeqReceived));
+	  send_rtp(sockfd, &packageToSend, &s_addr);
+	  
+	}
+      case STATE_SEND:
+	packageToSend.flags = FLAG_DATA;
+	packageToSend.seq = lastSeqSent++;
+	CleanRtpData(&packageToSend);
+	memcpy(&packageToSend.data, "Message from the client.", strlen("Message from the client."));
+	send_rtp(sockfd, &packageToSend, &s_addr);
+	// add to sender window
+	state = STATE_LISTEN;
+      }
+    }
+
+
+
+
+
+    
+    /* Just nu faller den igenom alla STATE_TIMEOUT. behöver while loop alt. ex if-else för att skippa fall då gått till timeout */  
+  case MODE_TEARDOWN :
+    printf("MODE: MODE_TEARDOWN.\n");
+    switch(state) {
+
+      
+    case STATE_CONNECTED:
+
+      packageToSend.flags = FLAG_FIN;
+      packageToSend.seq = lastSeqSent++;
+      CleanRtpData(&packageToSend);
+      
+      send_rtp(sockfd, &packageToSend, &s_addr);
+      
+      state = STATE_AWAIT_FIN_ACK;
+      
+      
+    case STATE_AWAIT_FIN_ACK:
+      
+      printf("STATE: FIN sent, awaiting ack.\n");
+      
+      while(state == STATE_AWAIT_FIN_ACK) {
+	
+	read_timeout.tv_sec = MEDIUM_TIMEOUT;
+	read_timeout.tv_usec = 0;
+	read_fd = active_fd;
+      
+	retval = select(sockfd + 1, &read_fd, NULL, NULL, &read_timeout);
+	switch(retval) {
+	case -1 :
+	  perror("Client, select");
+	  exit(EXIT_FAILURE);
+	case 0 :
+	  printf("Timeout, going to timeout state.\n");
+	  state = STATE_TIMEOUT;
+	  break;
+	default :
+
+	  retval = recv_rtp(sockfd, &packageReceived, &s_addr);
+	  if (retval < 0) {
+	    printf("STATE_AWAIT_FIN_ACK: Received msg, checksum error.\n");
+	    break;
+	  }
+
+	  printf("Received: ");
+	  print_rtp(&packageReceived);
+	  
+	  if (packageReceived.flags == FLAG_FIN_ACK) {
+	    printf("STATE_AWAIT_FIN_ACK: Received SYN-ACK.\n");
+	    state = STATE_AWAIT_FIN;
+	    break;
+	  }
+	  else if (packageReceived.flags == FLAG_FIN) {
+	    printf("STATE_AWAIT_FIN_ACK: Received FIN. Listening for FIN-ACK and then moving to STATE_TIMEOUT.\n");
+	    packageToSend.flags = FLAG_FIN_ACK;
+	    packageToSend.seq = lastSeqSent++;
+	    CleanRtpData(&packageToSend);
+	    memcpy(&packageToSend.data, &packageReceived.seq, sizeof(packageReceived.seq));
+
+	    send_rtp(sockfd, &packageToSend, &s_addr);
+
+	    while (state == STATE_AWAIT_FIN_ACK) {
+	    
+	      read_timeout.tv_sec = MEDIUM_TIMEOUT;
+	      read_timeout.tv_usec = 0;
+	      read_fd = active_fd;
+	      
+	      retval = select(sockfd + 1, &read_fd, NULL, NULL, &read_timeout);
+	      switch(retval) {
+	      case -1 :
+		perror("STATE_AWAIT_FIN_ACK, 2nd select for FIN-ACK after FIN");
+		exit(EXIT_FAILURE);
+	      case 0 :
+		printf("Timeout, going to timeout state.\n");
+		state = STATE_TIMEOUT;
+		break;
+	      default :
+		retval = recv_rtp(sockfd, &packageReceived, &s_addr);
+		if (retval < 0) {
+		  printf("Checksum error.\n");
+		  break;
+		}
+
+		if()
+		
+	      }
+	    }
+	    
+	  }
+	  else {
+	    printf("Msg is not relevant. Discarding.\n");
+	    break;
+	  }
+
+	  /* else if mottar fin, vänta på finack/timeout och gå direkt till timeout.*/
+
+	}
+      }
+    case STATE_AWAIT_FIN :
       printf("STATE: FIN-ACK received, waiting for FIN.\n");
+      read_timeout.tv_sec = MEDIUM_TIMEOUT;
+      read_timeout.tv_usec = 0;
       read_fd = active_fd;
+      
       retval = select(sockfd + 1, &read_fd, NULL, NULL, &read_timeout);
       switch(retval) {
       case -1 :
@@ -194,44 +337,33 @@ int main(int argc, char *argv[]) {
 	exit(EXIT_FAILURE);
       case 0 :
 	printf("Timeout, going to timeout state.\n");
-	state = TIMEOUT;
+	state = STATE_TIMEOUT;
 	break;
       default :
-	if(recvfrom(sockfd, (void *)buffer, MAXLINE, 0, (struct sockaddr *)&s_addr, &s_addrlen) < 0) {
+	if(recvfrom(sockfd, (void *)buffer, MAXLINE, 0, (struct sockaddr *)&s_addr, (unsigned int *)&s_addrlen) < 0) {
 	  perror("Client, receiving fin");
 	  exit(EXIT_FAILURE);
 	}
 	printf("Received fin.\n");
-	state = FIN_RECVD_WAIT_ACK;
+
+	// Send ack
       }
       
-    case FIN_RECVD_WAIT_ACK :
-      printf("STATE: FIN sent and received, waiting for FIN-ACK.\n");
-      read_fd = active_fd;
-      retval = select(sockfd + 1, &read_fd, NULL, NULL, &read_timeout);
-      switch(retval) {
-      case -1 :
-	perror("Client, select");
-	exit(EXIT_FAILURE);
-      case 0 :
-	printf("Timeout, going to timeout state.\n");
-	state = TIMEOUT;
-	break;
-      default :
-	if(recvfrom(sockfd, (void *)buffer, MAXLINE, 0, (struct sockaddr *)&s_addr, &s_addrlen) < 0) {
-	  perror("Client, receiving fin-ack");
-	  exit(EXIT_FAILURE);
-	}
-	printf("Received fin-ack.\n");
-	state = TIMEOUT;
-      }
-    case TIMEOUT :
+    case STATE_TIMEOUT:
       usleep(500000);
       close(sockfd);
+
+    case STATE_DISCONNECTED:
+      break;
     }
   }
 
   usleep(50000);
   exit(EXIT_SUCCESS);
 
+}
+
+
+void CleanRtpData(rtp *toClean) {
+  memset(toClean->data, '\0', MAX_DATA_LEN);
 }

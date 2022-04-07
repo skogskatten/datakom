@@ -2,8 +2,9 @@
 /* Att göra
  * 1. Ordna upp tillstånd. Lägg ev. till något om det saknas.
  * 2. Testa om fortfarande fungerar som server3 gjorde.
- * 3. Implementera checksummehantering.
- * 4. Implementera fönster.
+ * 3. Sekvensnummer? Lokala. ACKar innehåller sekvensnummer som data.
+ * 4. Implementera checksummehantering.
+ * 5. Implementera fönster.
  */
 #define PORT 5555 // plus en port till för uppkopplad klient? portnummer skickas då vi syn-ack.
 #define MAXLINE 1024
@@ -14,6 +15,7 @@
 
 int main(int argc, char *argv[]) {
   int s_sockfd, c_sockfd, retval, mode, state, n = 0;
+  int lastSeqSent, lastSeqReceived;
   fd_set active_fd, read_fd;
   
   FD_ZERO(&active_fd);
@@ -33,21 +35,20 @@ int main(int argc, char *argv[]) {
   memset(&c_addr, 0, sizeof(c_addr));
   memset(&c_addr2, 0, sizeof(c_addr2));
   
-  int s_addrlen = sizeof(s_addr), s_addr2len = sizeof(s_addr2),
-    c_addrlen = sizeof(c_addr), c_addr2len = sizeof(c_addr2);
+  int s_addrlen = sizeof(s_addr);
   
   s_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   if(s_sockfd < 0) {
     perror("Exit, server socket creation failure");
     exit(EXIT_FAILURE);
   }
-  packageToSend.id = s_sockfd;
-  
+
+
   s_addr.sin_family = AF_INET;
   s_addr.sin_addr.s_addr = INADDR_ANY; // se ip(7)
   s_addr.sin_port = htons(PORT);
   
-  //	memcpy((void *)&package.id, (const void *)&s_addr, sizeof(s_addr));
+  memcpy((void *)&packageToSend.id, (const void *)&s_addr, sizeof(s_addr));
   
   if(bind(s_sockfd, (const struct sockaddr *) &s_addr, s_addrlen) < 0){
     perror("Exit, server socket address binding error");
@@ -93,8 +94,7 @@ int main(int argc, char *argv[]) {
       printf("Sending: %s\n", msg);
 	
       packageToSend.flags = FLAG_SYN_ACK;
-      packageToSend.id = s_sockfd;
-      //	memcpy((void *)&package.id, (const void *)&s_addr, sizeof(s_addr));
+
       packageToSend.seq = sequence_number + 1;
       memcpy(packageToSend.data, msg, strnlen(msg, MAX_DATA_LEN));
       packageToSend.windowsize = WINDOW_SIZE;
@@ -212,7 +212,6 @@ int main(int argc, char *argv[]) {
       case STATE_CONNECTED:
 	// FIN received. Send ack.
 	packageToSend.flags = FLAG_FIN_ACK;
-	packageToSend.id = s_sockfd;
 	packageToSend.seq = sequence_number++;
 	memset(&packageToSend.data, '\0', MAX_DATA_LEN);
 	packageToSend.windowsize = WINDOW_SIZE;

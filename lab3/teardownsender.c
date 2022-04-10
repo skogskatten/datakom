@@ -156,10 +156,3 @@ void TeardownSender(int *state, int *mode, int writeSock, int readSock, fd_set w
 
 
 
-
-/* Helper functions */
-
-void CleanRtpData(rtp *toClean) {
-  memset(toClean->data, '\0', MAX_DATA_LEN);
-}
-

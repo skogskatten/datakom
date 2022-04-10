@@ -2,7 +2,8 @@
  * File: functions.c                             *
  * Name: Shared functions        				 *
  * Authors: agn, ark                             *
- * Purpose: Contain shared functions             *
+ * Purpose: Con
+tain shared functions             *
  * ***********************************************/
 
 #include "functions.h"

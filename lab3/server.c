@@ -15,7 +15,7 @@
 
 int main(int argc, char *argv[]) {
   int s_sockfd, c_sockfd, retval, mode, state, n = 0;
-  int lastSeqSent, lastSeqReceived;
+  int lastSeqSent = 0, lastSeqReceived = 0;
   fd_set active_fd, read_fd;
   
   FD_ZERO(&active_fd);
@@ -24,7 +24,6 @@ int main(int argc, char *argv[]) {
   char *msg;
   rtp packageToSend, packageReceived;
   packageToSend.windowsize = WINDOW_SIZE;
-  int sequence_number = -1;
   
   struct sockaddr_in s_addr,s_addr2, c_addr, c_addr2;
   
@@ -74,12 +73,12 @@ int main(int argc, char *argv[]) {
       
     case STATE_LISTEN :
       printf("STATE: listening for syn.\n");
-      
+      while (state == STATE_LISTEN) {
       retval = recv_rtp(s_sockfd, &packageReceived, &c_addr);
       if(retval < 0) {
 	printf("retval = %d. Server, listening for connection: received incorrect checksum.\n", retval);
       }
-      //      else {
+
       printf("Server, listening for connection: received %d bytes from %s.\n", retval, inet_ntoa(c_addr.sin_addr));
       printf("Msg: %s\n", packageReceived.data);
       memset(&packageReceived.data, '\0', MAX_DATA_LEN);
@@ -95,13 +94,13 @@ int main(int argc, char *argv[]) {
 	
       packageToSend.flags = FLAG_SYN_ACK;
 
-      packageToSend.seq = sequence_number + 1;
+      packageToSend.seq = lastSeqSent + 1;
       memcpy(packageToSend.data, msg, strnlen(msg, MAX_DATA_LEN));
       packageToSend.windowsize = WINDOW_SIZE;
 
       send_rtp(c_sockfd, &packageToSend, &c_addr);
       state = STATE_AWAIT_ACK;
-      //      }
+      }
 
 
     case STATE_AWAIT_ACK :
@@ -109,9 +108,9 @@ int main(int argc, char *argv[]) {
       FD_ZERO(&active_fd);
       FD_ZERO(&read_fd);
       FD_SET(c_sockfd, &active_fd);
-      read_fd = active_fd;
+      active_fd = read_fd;
       
-      switch(select(c_sockfd + 1, &read_fd, NULL, NULL, NULL)) {
+      switch(select(c_sockfd + 1, &active_fd, NULL, NULL, NULL)) {
       case -1:
 	perror("Server, select c_sockfd");
 	exit(EXIT_FAILURE);

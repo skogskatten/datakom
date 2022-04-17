@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
   
   char buffer[MAXLINE];
   char hostName[hostNameLength];
-  char *msg;
+  char *msg = "Msg from the client.", input[5];
   
   rtp packageToSend, packageReceived;
   rtp sendWindow[WINDOW_SIZE];
@@ -158,32 +158,30 @@ int main(int argc, char *argv[]) {
       mode = MODE_CONNECTED;
     }
 
-
-
-    
   case MODE_CONNECTED :
     printf("MODE: MODE_CONNECTED.\n");
     while (mode == MODE_CONNECTED) {
 
       switch(state) {
       case STATE_LISTEN:
-	
-	SlidingReceiver(&timeoutCounter, &state, &mode, sockfd, sockfd, read_fd, &lastSeqReceived, windowSize, sendWindow, &s_addr, &c_addr);
+	SlidingReceiver(&timeoutCounter, &state, &mode, sockfd, sockfd, read_fd, &lastSeqReceived, &lastSeqSent, windowSize, sendWindow, &s_addr, &c_addr);
+	break;
 	
       case STATE_SEND:
-	//SlidingSender
+	SlidingSender(msg, &timeoutCounter, &state, &mode, sockfd, sockfd, read_fd, write_fd, &lastSeqReceived, &lastSeqSent, windowSize, sendWindow, &s_addr, &c_addr);
+	      
+	printf("Continue?");
+	scanf("%s", input);
+	if(strcmp("FIN", input) == 0) {
+	  mode = MODE_TEARDOWN;
+	}
       }
     }
 
-
-
-
-
-    
-    /* Just nu faller den igenom alla STATE_TIMEOUT. behöver while loop alt. ex if-else för att skippa fall då gått till timeout */  
   case MODE_TEARDOWN :
     
-
+    TeardownSender(&state, &mode, sockfd, sockfd, write_fd, read_fd, &lastSeqSent, &lastSeqReceived, sendWindow, &s_addr, &c_addr);
+    
   }
 
   usleep(50000);

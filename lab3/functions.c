@@ -168,7 +168,7 @@ int recv_rtp(int sockfd, rtp *package, struct sockaddr_in *addr)
     unsigned char buffer[PACKAGE_LEN];
     
     nOfBytes = recvfrom(sockfd, (unsigned char*)buffer, PACKAGE_LEN, MSG_WAITALL,
-              (struct sockaddr*) addr, &len);
+			(struct sockaddr*) addr, &len); // notera MSG_WAITALL gör inget för datagram (udp)
     
     if(nOfBytes < 0)
     {

@@ -11,9 +11,11 @@ void SlidingSender(char *msg, int *timeoutCounter, int *state, int *mode, int wr
   write_timeout.tv_sec = SHORT_TIMEOUT;
   write_timeout.tv_usec = 0;
   
-  
-  
-  switch(select(writeSock + 1, NULL, &write_fd, NULL, &write_timeout)) {
+  fd_set active_fd;
+  FD_ZERO(&active_fd);
+  active_fd = write_fd;
+    
+  switch(select(writeSock + 1, NULL, &active_fd, NULL, &write_timeout)) {
   case -1:
     perror("SlidingSender: Select:");
     exit(EXIT_FAILURE);
@@ -23,16 +25,10 @@ void SlidingSender(char *msg, int *timeoutCounter, int *state, int *mode, int wr
     *state = STATE_LISTEN;
     return;
     
-  default:
-    // vad fan händer här?
-    rtp packageToSend;
-    memcpy((void *)&packageToSend.id, (const void *)localAddr, sizeof(*localAddr));
+  default: {
 
-    fd_set active_fd;
-    FD_ZERO(&active_fd);
-    active_fd = write_fd;
-    select(writeSock + 1, NULL, &active_fd, NULL, NULL);
-  
+    rtp packageToSend;
+    memcpy((void *)&packageToSend.id, (const void *)inet_ntoa(localAddr->sin_addr), strlen(inet_ntoa(localAddr->sin_addr)));
     packageToSend.flags = FLAG_DATA;
     packageToSend.seq = (*lastSeqSent)++;
     CleanRtpData(&packageToSend);
@@ -42,6 +38,7 @@ void SlidingSender(char *msg, int *timeoutCounter, int *state, int *mode, int wr
     AddToWindow(sendWindow, windowSize, packageToSend);
   
     send_rtp(writeSock, &packageToSend, remoteAddr);
+  }
   }
   *state = STATE_LISTEN;
 

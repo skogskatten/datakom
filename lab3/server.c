@@ -15,15 +15,17 @@
 
 int main(int argc, char *argv[]) {
   int s_sockfd, c_sockfd, retval, mode, state, n = 0;
-  int lastSeqSent = 0, lastSeqReceived = 0;
-  fd_set active_fd, read_fd;
+  int lastSeqSent = 0, lastSeqReceived = 0, timeoutCounter = 0;
+  int windowSize;
+  fd_set active_fd, read_fd, write_fd;
   
   FD_ZERO(&active_fd);
   FD_ZERO(&read_fd);
+  FD_ZERO(&write_fd);
   
-  char *msg;
+  char *msg = "Msg from the server.";
   rtp packageToSend, packageReceived;
-  packageToSend.windowsize = WINDOW_SIZE;
+  rtp *window; // allocated in the connection phase.
   
   struct sockaddr_in s_addr,s_addr2, c_addr, c_addr2;
   
@@ -42,12 +44,12 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-
   s_addr.sin_family = AF_INET;
   s_addr.sin_addr.s_addr = INADDR_ANY; // se ip(7)
   s_addr.sin_port = htons(PORT);
-  
-  memcpy((void *)&packageToSend.id, (const void *)&s_addr, sizeof(s_addr));
+
+  //  inet_ntoa(c_addr.sin_addr)
+  memcpy((void *)&packageToSend.id, (const void *)inet_ntoa(s_addr.sin_addr), strlen(inet_ntoa(s_addr.sin_addr)));
   
   if(bind(s_sockfd, (const struct sockaddr *) &s_addr, s_addrlen) < 0){
     perror("Exit, server socket address binding error");
@@ -56,210 +58,45 @@ int main(int argc, char *argv[]) {
   
   mode = MODE_AWAIT_CONNECT;
   state = STATE_LISTEN;
-  switch(mode) {
-  default :
-    printf("Undefined case: mode. Exiting.\n");
-    exit(EXIT_FAILURE);
-    
-  case MODE_AWAIT_CONNECT :
-    printf("MODE: MODE_AWAIT_CONNECT.\n"); // Antar alla inkommande meddelanden är syn
-    if(state == RESET)
-      state = STATE_LISTEN;
-    switch(state) {
+
+  /* Here is the main mode/state loop. It will loop until a connection has been both established and shut down. */
+  while(state != STATE_DISCONNECTED) {
+    switch(mode) {
     default :
-      printf("Undefined case: unconnected state . Exiting.\n");
+      printf("Undefined case: mode. Exiting.\n");
       exit(EXIT_FAILURE);
-      
-      
-    case STATE_LISTEN :
-      printf("STATE: listening for syn.\n");
-      while (state == STATE_LISTEN) {
-      retval = recv_rtp(s_sockfd, &packageReceived, &c_addr);
-      if(retval < 0) {
-	printf("retval = %d. Server, listening for connection: received incorrect checksum.\n", retval);
-      }
-
-      printf("Server, listening for connection: received %d bytes from %s.\n", retval, inet_ntoa(c_addr.sin_addr));
-      printf("Msg: %s\n", packageReceived.data);
-      memset(&packageReceived.data, '\0', MAX_DATA_LEN);
-
-      c_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-      if(c_sockfd < 0) {
-	perror("Server, creating client socket");
-	exit(EXIT_FAILURE);
-      }
-
-      msg = "syn-ack";
-      printf("Sending: %s\n", msg);
-	
-      packageToSend.flags = FLAG_SYN_ACK;
-
-      packageToSend.seq = lastSeqSent + 1;
-      memcpy(packageToSend.data, msg, strnlen(msg, MAX_DATA_LEN));
-      packageToSend.windowsize = WINDOW_SIZE;
-
-      send_rtp(c_sockfd, &packageToSend, &c_addr);
-      state = STATE_AWAIT_ACK;
-      }
-
-
-    case STATE_AWAIT_ACK :
-      printf("STATE: waiting for syn-ack-ack.\n");
-      FD_ZERO(&active_fd);
-      FD_ZERO(&read_fd);
-      FD_SET(c_sockfd, &active_fd);
-      active_fd = read_fd;
-      
-      switch(select(c_sockfd + 1, &active_fd, NULL, NULL, NULL)) {
-      case -1:
-	perror("Server, select c_sockfd");
-	exit(EXIT_FAILURE);
-      case 0:
-	printf("Server, select c_sockfd: nothing to read. Returning to listen state.\n");
-	close(c_sockfd);
-	state = STATE_LISTEN;
-	FD_ZERO(&active_fd);
-	break;
-      default:
-	retval = recv_rtp(c_sockfd, &packageReceived, &c_addr2);
-	if(retval < 0) {
-	  printf("Server, listening for syn-ack-ack: incorrect checksum.");
-	}
-	//	else {
-	printf("Server, listening for syn-ack-ack: received %d bytes from %s.\n", retval, inet_ntoa(c_addr2.sin_addr));
-	printf("Msg: %s\n", packageReceived.data);
-	memset(&packageReceived.data, '\0', MAX_DATA_LEN);
-
-
-	retval = recv_rtp(c_sockfd, &packageReceived, &c_addr2);
-	if (retval < 0) {
-	  perror("Something: incorrect checksum received.");
-	}
-	printf("Msg flag: %d", packageReceived.flags);
-	printf("Msg data: %s", packageReceived.data);
-	state = STATE_CONNECTED;
-	
-	//	}
-      
-      case STATE_CONNECTED :
-	printf("STATE: syn-ack-ack received.\n");
-	mode = MODE_CONNECTED;
-	state = RESET;
-     
-      }
-      if(mode != MODE_CONNECTED)
-	break;
-
-
+    
+    case MODE_AWAIT_CONNECT :
+      //connectionreceiver
+    
+      break;
       
     case MODE_CONNECTED :
       printf("MODE: MODE_CONNECTED.\n");
     
       while(mode == MODE_CONNECTED) {
-	read_fd = active_fd;
-
-
-	switch(select(c_sockfd + 1, &read_fd, NULL, NULL, NULL)) {
-	case -1:
-	  perror("MODE_CONNECTED, select c_sockfd");
-	  exit(EXIT_FAILURE);
+      
+	SlidingReceiver(&timeoutCounter, &state, &mode, c_sockfd, c_sockfd, read_fd, &lastSeqReceived, windowSize, window,  sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
+	if (mode == MODE_CONNECTED)
+	  SlidingSender(msg, &timeoutCounter, &state, &mode, c_sockfd, c_sockfd, active_fd, active_fd, &lastSeqReceived, &lastSeqSent, windowSize, window, &c_addr, &s_addr);
 	
-	case 0:
-	  printf("MODE_CONNECTED, select c_sockfd: nothing to read.\n");
-	  break;
-	
-	default:
-	  retval = recv_rtp(c_sockfd, &packageReceived, &c_addr2);
-	  if(retval < 0) {
-	    printf("MODE_CONNECTED, listening for message: incorrect checksum.");
-	  }
-	  //	  else {
-	  printf("MODE_CONNECTED, listening for  message: received %d bytes from %s.\n", retval, inet_ntoa(c_addr2.sin_addr));
-	  printf("Msg: %s\n", packageReceived.data);
-	  memset(&packageReceived.data, '\0', MAX_DATA_LEN);
-	  if (packageReceived.flags == FLAG_FIN) {
-	    printf("MODE_CONNECTED, received FIN flag.\n");
-	    mode = MODE_TEARDOWN;
-	    state = STATE_CONNECTED;
-	    break;
-	  }
-	  //	  }
-	}
-
-	msg = "\0";
-	packageToSend.flags = FLAG_ACK;
-
-	packageToSend.seq = sequence_number++;
-	memcpy(packageToSend.data, msg, strnlen(msg, MAX_DATA_LEN));
-	packageToSend.windowsize = WINDOW_SIZE;
-
-	send_rtp(c_sockfd, &packageToSend, &c_addr);
-	
-	n++;
-	break;
       }
     
-      //    break;
+      break;
       
     case MODE_TEARDOWN : // receiver version
       printf("MODE: MODE_TEARDOWN\n");
-      switch(state) {
-      default:
-	printf("MODE_TEARDOWN unknown state.");
-	break;
-	
-      case STATE_CONNECTED:
-	// FIN received. Send ack.
-	packageToSend.flags = FLAG_FIN_ACK;
-	packageToSend.seq = sequence_number++;
-	memset(&packageToSend.data, '\0', MAX_DATA_LEN);
-	packageToSend.windowsize = WINDOW_SIZE;
-	send_rtp(c_sockfd, &packageToSend, &c_addr);
-
-	state = STATE_SHUTTING_DOWN;
-
-      case STATE_SHUTTING_DOWN:
-	//Send FIN.
-	packageToSend.flags = FLAG_FIN;
-	packageToSend.seq = sequence_number++;
-	memset(&packageToSend.data, '\0', MAX_DATA_LEN);
-	
-	send_rtp(c_sockfd, &packageToSend, &c_addr);
-
-	state = STATE_AWAIT_FIN_ACK;
-
-      case STATE_AWAIT_FIN_ACK:
-	//select med timeout
-	
-	read_timeout.tv_sec = TIMEOUT;
-	read_timeout.tv_usec = 0;
-	
-	switch(select(c_sockfd + 1, &read_fd, NULL, NULL, &read_timeout)) {
-	case -1:
-	  perror("STATE_AWAIT_FIN_ACK");
-	  break;
-	case 0:
-	  printf("STATE_AWAIT_FIN_ACK timeout, disconnecting.");
-	  break;
-	default:
-	  retval = recv_rtp(c_sockfd, &packageReceived, &c_addr);
-	  if(retval < 0)
-	    printf("STATE_AWAIT_FIN_ACK: Checksum error.\n");
-	  if(packageReceived.flags == FLAG_FIN_ACK)
-	    printf("STATE_AWAIT_FIN_ACK: FIN-ACK received, disconnecting.\n");
-	  break;
-	}
-	
-	state = STATE_DISCONNECTED;
-      case STATE_DISCONNECTED:
-	printf("STATE_DISCONNECTED\n");
-	break;
-      }
+      
+      TeardownReceiver(&state, &mode, c_sockfd, c_sockfd, active_fd, active_fd, &lastSeqSent, &lastSeqReceived, &c_addr, &s_addr);
+      
+      break;
     }
   }
+
   
   usleep(5000);
   //  close(c_sockfd);
   close(s_sockfd);
+  free(window);
   exit(EXIT_SUCCESS);
 }

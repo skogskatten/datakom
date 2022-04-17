@@ -16,8 +16,6 @@ void TeardownSender(int *state, int *mode, int writeSock, int readSock, fd_set w
   
   printf("MODE: MODE_TEARDOWN.\n");
   switch(*state) {
-
-      
   case STATE_CONNECTED:
 
     packageToSend.flags = FLAG_FIN;
@@ -62,19 +60,21 @@ void TeardownSender(int *state, int *mode, int writeSock, int readSock, fd_set w
 	print_rtp(&packageReceived);
 	  
 	if (packageReceived.flags == FLAG_FIN_ACK) {
-	  printf("STATE_AWAIT_FIN_ACK: Received SYN-ACK.\n");
+	  printf("STATE_AWAIT_FIN_ACK: Received FIN-ACK.\n");
 	  *state = STATE_AWAIT_FIN;
 	  break;
 	}
 	else if (packageReceived.flags == FLAG_FIN) {
 	  printf("STATE_AWAIT_FIN_ACK: Received FIN. Listening for FIN-ACK and then moving to STATE_TIMEOUT.\n");
+	  // SENDING FIN-ACK
 	  packageToSend.flags = FLAG_FIN_ACK;
-	  packageToSend.seq = *lastSeqSent++;
+	  packageToSend.seq = packageReceived.seq;
 	  CleanRtpData(&packageToSend);
 	  memcpy(&packageToSend.data, &packageReceived.seq, sizeof(packageReceived.seq));
 
 	  send_rtp(writeSock, &packageToSend, remoteAddr);
 
+	  // WAITING FOR FIN-ACK
 	  /* See select(2) for timeout placement. */
 	  read_timeout.tv_sec = MEDIUM_TIMEOUT;
 	  read_timeout.tv_usec = 0;
@@ -92,59 +92,70 @@ void TeardownSender(int *state, int *mode, int writeSock, int readSock, fd_set w
 	      printf("Timeout, going to timeout state.\n");
 	      *state = STATE_TIMEOUT;
 	      break;
-	    default :
+	    default : 
 	      retval = recv_rtp(readSock, &packageReceived, remoteAddr);
 	      if (retval < 0) {
 		printf("Checksum error.\n");
 		break;
 	      }
-
-	      // Send FIN-ACK
-	      
+	      else if (packageReceived.flags != FLAG_FIN_ACK){
+		printf("STATE_AWAIT_FIN_ACK, 2nd select for FIN-ACK after FIN: msg received is not relevant.\n");
+		break;
+	      }
+	    }
 	  }
-	    
 	}
-	/* else { */
-	/*   printf("Msg is not relevant. Discarding.\n"); */
-	/*   break; */
+	else {
+	  printf("Msg is not relevant. Discarding.\n");
+	  break;
 	}
-
-	/* else if mottar fin, vänta på finack/timeout och gå direkt till timeout.*/
-
       }
     }
+    
   case STATE_AWAIT_FIN :
+    
     printf("STATE: FIN-ACK received, waiting for FIN.\n");
     read_timeout.tv_sec = MEDIUM_TIMEOUT;
     read_timeout.tv_usec = 0;
-    active_fd = read_fd;
-      
-    retval = select(readSock + 1, &active_fd, NULL, NULL, &read_timeout);
-    switch(retval) {
-    case -1 :
-      perror("Client, select");
-      exit(EXIT_FAILURE);
-    case 0 :
-      printf("Timeout, going to timeout state.\n");
-      *state = STATE_TIMEOUT;
-      break;
-    default :
-      
-      retval = recv_rtp(readSock, &packageReceived, remoteAddr);
-      if(retval < 0) {
-	printf("STATE_AWAIT_FIN: Bad checksum.\n");
-      }
-      else if (packageReceived.flags == FLAG_FIN) {
-	
-      }
-      else {
-	
-      }
-      
 
-      // Send ack
-    }
+    while (*state == STATE_AWAIT_FIN) {
+      active_fd = read_fd;
+    
+      retval = select(readSock + 1, &active_fd, NULL, NULL, &read_timeout);
+      switch(retval) {
+      case -1 :
+	perror("Client, select");
+	exit(EXIT_FAILURE);
+      case 0 :
+	printf("Timeout, going to timeout state.\n");
+	*state = STATE_TIMEOUT;
+	break;
+      default :
       
+	retval = recv_rtp(readSock, &packageReceived, remoteAddr);
+	if(retval < 0) {
+	  printf("STATE_AWAIT_FIN: Bad checksum.\n");
+	}
+	else if (packageReceived.flags == FLAG_FIN) {
+	  printf("STATE_AWAIT_FIN: FIN received, sending FIN-ACK.\n");
+
+	  packageToSend.flags = FLAG_FIN_ACK;
+	  packageToSend.seq = packageReceived.seq;
+	  CleanRtpData(&packageToSend);
+	  memcpy(&packageToSend.data, &packageReceived.seq, sizeof(packageReceived.seq));
+
+	  send_rtp(writeSock, &packageToSend, remoteAddr);
+
+	  printf("STATE_AWAIT_FIN: Going to timeout.\n");
+	  *state = STATE_TIMEOUT;
+	}
+	else {
+	  printf("STATE_AWAIT_FIN: Msg is not relevant.\n");
+	  break;
+	}
+      }
+    }
+    
   case STATE_TIMEOUT:
     usleep(500000);
     close(readSock);

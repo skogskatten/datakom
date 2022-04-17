@@ -52,7 +52,6 @@ int RemoveAcknowledgedFromWindow(rtp *window, int windowSize, unsigned int acked
   return numRemoved;
 }
 
-
 rtp GetFromWindow(rtp *window, int windowSize, unsigned int seqToGet) {
   int i = 0;
   while (window[i].seq != seqToGet) {
@@ -66,4 +65,26 @@ rtp GetFromWindow(rtp *window, int windowSize, unsigned int seqToGet) {
   return window[i];
 }
 
-
+int ResendWindow(rtp *window, int windowSize, int sockfd, struct sockaddr_in *remoteAddr) {
+  int numSent = 0;
+  fd_set write_fd, active_fd;
+  FD_ZERO(&active_fd);
+  FD_SET(sockfd, &active_fd);
+  
+  for(int i = 0; i < windowSize; i++) {
+    if (window[i].seq == 0)
+      break;
+    write_fd = active_fd;
+    switch(select(sockfd + 1, NULL, &write_fd, NULL, NULL)) {
+    case -1:
+      {
+	perror("ResendWindow");
+	break;
+      }
+    default:
+      send_rtp(sockfd, &window[i], remoteAddr);
+      numSent++;
+    }
+  }
+  return numSent;
+}

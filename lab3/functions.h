@@ -130,13 +130,19 @@ void print_rtp(rtp *package);
 void TeardownSender(int *state, int *mode, int writeSock, int readSock, fd_set write_fd, fd_set read_fd, int *lastSeqSent, int *lastSeqReceived, rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
 
 /* Teardown mode when started by receiving FIN */
-void TeardownReceiver();
+void TeardownReceiver(int *state, int *mode, int writeSock, int readSock, fd_set write_fd, fd_set read_fd, int *lastSeqSent, int *lastSeqReceived, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
 
 /* Listens for incoming data from connected client/server, send ACK if apropriate (WARNING! Contains no actual sliding.) */
-void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, int *lastSeqReceived, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
+void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
 
 /* Sends data to connected client/server. Contains the sliding window. */
 void SlidingSender(char *msg, int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, fd_set write_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
+
+/*  */
+void ConnectionReceiver(int *state, int *mode, int writeSock, int readSock, fd_set read_fd, int *lastSeqReceived, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
+
+/*  */
+// void ConnectionSender
 
 
 /* Helper functions */
@@ -158,3 +164,5 @@ int RemoveAcknowledgedFromWindow(rtp *window, int windowSize, unsigned int acked
 
 /* Returns rtp with given sequence number from window. Returns dummy with seq 0 if sequence number is not found. Useful when resending. */
 rtp GetFromWindow(rtp *window, int windowSize, unsigned int seqToGet);
+
+int ResendWindow(rtp *window, int windowSize, int sockfd, struct sockaddr_in *remoteAddr);

@@ -32,9 +32,7 @@ int main(int argc, char *argv[]) {
   struct timeval read_timeout;
   
   memset(&s_addr, 0, sizeof(s_addr));
-  memset(&s_addr2, 0, sizeof(s_addr2));
   memset(&c_addr, 0, sizeof(c_addr));
-  memset(&c_addr2, 0, sizeof(c_addr2));
   
   int s_addrlen = sizeof(s_addr);
   
@@ -77,7 +75,8 @@ int main(int argc, char *argv[]) {
       while(mode == MODE_CONNECTED) {
       
 	SlidingReceiver(&timeoutCounter, &state, &mode, c_sockfd, c_sockfd, read_fd, &lastSeqReceived, windowSize, window,  sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
-	if (mode == MODE_CONNECTED)
+	
+	if (mode == MODE_CONNECTED && lastSeqSent < lastSeqReceived)
 	  SlidingSender(msg, &timeoutCounter, &state, &mode, c_sockfd, c_sockfd, active_fd, active_fd, &lastSeqReceived, &lastSeqSent, windowSize, window, &c_addr, &s_addr);
 	
       }

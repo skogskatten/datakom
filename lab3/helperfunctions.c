@@ -88,3 +88,12 @@ int ResendWindow(rtp *window, int windowSize, int sockfd, struct sockaddr_in *re
   }
   return numSent;
 }
+
+rtp *AllocateWindow(int windowSize) {
+  rtp *window = malloc(sizeof(rtp)*windowSize);
+  if(window == NULL) {
+    perror("AllocateWindow");
+    exit(EXIT_FAILURE);
+  }
+  return window; 
+}

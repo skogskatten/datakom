@@ -139,7 +139,7 @@ void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, 
 void SlidingSender(char *msg, int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, fd_set write_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
 
 /*  */
-void ConnectionReceiver(int *state, int *mode, int writeSock, int readSock, fd_set read_fd, int *lastSeqReceived, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
+void ConnectionReceiver(int *state, int *mode, int *clientSock, int serverSock, fd_set *read_fd, fd_set *write_fd, int *lastSeqReceived, int *lastSeqSent, int *windowSize, rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
 
 /*  */
 // void ConnectionSender
@@ -165,4 +165,8 @@ int RemoveAcknowledgedFromWindow(rtp *window, int windowSize, unsigned int acked
 /* Returns rtp with given sequence number from window. Returns dummy with seq 0 if sequence number is not found. Useful when resending. */
 rtp GetFromWindow(rtp *window, int windowSize, unsigned int seqToGet);
 
+/* Resends all rtp in the window. */
 int ResendWindow(rtp *window, int windowSize, int sockfd, struct sockaddr_in *remoteAddr);
+
+/* Uses malloc to allocate and then initialise the server window. */
+rtp *AllocateWindow(int windowSize);

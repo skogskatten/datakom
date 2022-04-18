@@ -51,8 +51,9 @@ void ConnectionReceiver(int *state, int *mode, int *clientSock, int serverSock, 
 	    }
 	  
 	    packageToSend.flags = FLAG_SYN_ACK;
-	    *lastSeqSent = 1;
-	    memcpy(&packageToSend.seq, lastSeqSent, sizeof(*lastSeqSent));
+	    //*lastSeqSent = 1;
+	    memcpy(&packageToSend.seq, &packageReceived.seq, sizeof(packageReceived.seq));
+	    *lastSeqSent = packageReceived.seq;
 	    packageToSend.windowsize = *windowSize;
 	  
 	    send_rtp(*clientSock, &packageToSend, remoteAddr);

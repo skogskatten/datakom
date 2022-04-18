@@ -138,11 +138,11 @@ void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, 
 /* Sends data to connected client/server. Contains the sliding window. */
 void SlidingSender(char *msg, int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, fd_set write_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
 
-/*  */
+/* Listens for SYN packages. Loops back to the listening state if connection is not completed. Only returns if an ACK for the SYN-ACK is received. It initialises the window and socket file descriptors if a connection is established. */
 void ConnectionReceiver(int *state, int *mode, int *clientSock, int serverSock, fd_set *read_fd, fd_set *write_fd, int *lastSeqReceived, int *lastSeqSent, int *windowSize, rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
 
-/*  */
-// void ConnectionSender
+/* Sends SYN package. Keeps sending and listening for SYN-ACK until one is received. Then sends ACK and goes to MODE_CONNECTED. */
+void ConnectionSender(int *state, int *mode, int sockfd, fd_set read_fd, fd_set write_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
 
 
 /* Helper functions */

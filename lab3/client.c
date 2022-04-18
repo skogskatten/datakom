@@ -55,8 +55,8 @@ int main(int argc, char *argv[]) {
   c_addr.sin_family = AF_INET;
   c_addr.sin_port = htons(PORT);
   c_addr.sin_addr.s_addr = INADDR_ANY;
-  
-  memcpy((void *)&packageToSend.id, (const void *)&c_addr, sizeof(c_addr));
+
+  memcpy((void *)&packageToSend.id, (const void *)inet_ntoa(c_addr.sin_addr), strlen(inet_ntoa(c_addr.sin_addr)));
 
   struct hostent *hostInfo; /* Contains info about the host */
 
@@ -82,81 +82,8 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
 
   case MODE_AWAIT_CONNECT:
-    printf("MODE: unconnected.\n");
 
-    switch(state) {
-    default :
-      printf("Undefined case: state . Exiting.\n");
-      exit(EXIT_FAILURE);
-
-      
-    case STATE_WANT_CONNECT :
-      printf("STATE: wants to connect.\n");
-      
-      packageToSend.flags = FLAG_SYN;
-      CleanRtpData(&packageToSend);
-      memcpy(&packageToSend.data, &windowSize, sizeof(windowSize));
-      memcpy(&packageToSend.windowsize, &windowSize, sizeof(windowSize)); // This will inform the server of the window size we will use.
-      packageToSend.seq = lastSeqSent++;
-      
-      send_rtp(sockfd, &packageToSend, &s_addr);
-            
-      printf("Sent:\n");
-      print_rtp(&packageToSend);
-      
-      state = STATE_AWAIT_SYN_ACK;
-
-      
-    case STATE_AWAIT_SYN_ACK :
-      printf("STATE: wait for syn-ack.\n");
-
-      while(state == STATE_AWAIT_SYN_ACK) {
-	
-	read_timeout.tv_sec = SHORT_TIMEOUT;
-	read_timeout.tv_usec = 0;
-	active_fd = read_fd;
-	
-	switch(select(sockfd + 1, &active_fd, NULL, NULL, &read_timeout)) {
-	case -1:
-	  // error
-	  perror("MODE_CONNECT: Select for syn-ack failed");
-	  exit(EXIT_FAILURE);
-	case 0:
-	  // timeout
-	  printf("The server timed out. Returning to STATE_WANT_CONNECT.\n");
-	  state = STATE_WANT_CONNECT;
-	  break;
-	default:
-	  // read
-	  retval = recv_rtp(sockfd, &packageReceived, &s_addr);
-	  if (retval < 0) {
-	    printf("Checksum error.\n");
-	  }
-	  else if (packageReceived.flags == FLAG_SYN_ACK) {
-	    printf("STATE_AWAIT_SYN_ACK: SYN-ACK received:\n");
-	    print_rtp(&packageReceived);
-	    state = STATE_CONNECTED;
-	  }
-	  else {
-	    printf("Received: ");
-	    print_rtp(&packageReceived);
-	    printf("Still waiting for SYN-ACK.");
-	  }
-	}
-      }
-
-      
-    case STATE_CONNECTED:
-      printf("STATE: STATE_CONNECTED.\n");
-
-      packageToSend.flags = FLAG_ACK;
-      CleanRtpData(&packageToSend);
-      packageToSend.seq = lastSeqSent++;
-      memcpy(&packageToSend.data, &lastSeqReceived, sizeof(lastSeqReceived));
-      send_rtp(sockfd, &packageToSend, &s_addr);
-      printf("STATE_CONNECTED: SYN-ACK-ACK sent, going to MODE_CONNECTED.\n");
-      mode = MODE_CONNECTED;
-    }
+    ConnectionSender(&state, &mode, sockfd, read_fd, write_fd, &lastSeqReceived, &lastSeqSent, windowSize, &s_addr, &c_addr);
 
   case MODE_CONNECTED :
     printf("MODE: MODE_CONNECTED.\n");
@@ -184,7 +111,7 @@ int main(int argc, char *argv[]) {
     
   }
 
-  usleep(50000);
+  //  usleep(50000);
   exit(EXIT_SUCCESS);
 
 }

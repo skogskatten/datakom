@@ -65,7 +65,8 @@ int main(int argc, char *argv[]) {
       exit(EXIT_FAILURE);
     
     case MODE_AWAIT_CONNECT :
-      //connectionreceiver
+      
+      ConnectionReceiver(&state, &mode, &c_sockfd, s_sockfd, &read_fd, &write_fd, &lastSeqReceived, &lastSeqSent, &windowSize, window, &s_addr, &c_addr);
     
       break;
       
@@ -74,7 +75,7 @@ int main(int argc, char *argv[]) {
     
       while(mode == MODE_CONNECTED) {
       
-	SlidingReceiver(&timeoutCounter, &state, &mode, c_sockfd, c_sockfd, read_fd, &lastSeqReceived, windowSize, window,  sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
+	SlidingReceiver(&timeoutCounter, &state, &mode, c_sockfd, c_sockfd, read_fd, &lastSeqReceived, &lastSeqSent, windowSize, window,  &c_addr, &s_addr);
 	
 	if (mode == MODE_CONNECTED && lastSeqSent < lastSeqReceived)
 	  SlidingSender(msg, &timeoutCounter, &state, &mode, c_sockfd, c_sockfd, active_fd, active_fd, &lastSeqReceived, &lastSeqSent, windowSize, window, &c_addr, &s_addr);

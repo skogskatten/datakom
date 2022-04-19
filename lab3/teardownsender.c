@@ -130,16 +130,16 @@ void TeardownSender(int *state, int *mode, int writeSock, int readSock, fd_set w
       while (*state == STATE_AWAIT_FIN) {
 	active_fd = read_fd;
     
-	retval = select(readSock + 1, &active_fd, NULL, NULL, &read_timeout);
-	switch(retval) {
-	case -1 :
-	  perror("Client, select");
-	  exit(EXIT_FAILURE);
-	case 0 :
-	  printf("Timeout, going to timeout state.\n");
-	  *state = STATE_TIMEOUT;
-	  break;
-	default :
+	/* retval = select(readSock + 1, &active_fd, NULL, NULL, &read_timeout); */
+	/* switch(retval) { */
+	/* case -1 : */
+	/*   perror("Client, select"); */
+	/*   exit(EXIT_FAILURE); */
+	/* case 0 : */
+	/*   printf("Timeout, going to timeout state.\n"); */
+	/*   *state = STATE_TIMEOUT; */
+	/*   break; */
+	/* default : */
       
 	  retval = recv_rtp(readSock, &packageReceived, remoteAddr);
 	  if(retval < 0) {
@@ -162,7 +162,7 @@ void TeardownSender(int *state, int *mode, int writeSock, int readSock, fd_set w
 	    printf("STATE_AWAIT_FIN: Msg is not relevant.\n");
 	    break;
 	  }
-	}
+	  //	}
       }
       break;
     }

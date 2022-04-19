@@ -91,7 +91,7 @@ void ConnectionReceiver(int *state, int *mode, int *clientSock, int serverSock, 
 	default:
 	  retval = recv_rtp(*clientSock, &packageReceived, remoteAddr);
 	  if(retval < 0) {
-	    printf("STATE_AWAIT_ACK: listening for syn-ack-ack: incorrect checksum.");
+	    printf("STATE_AWAIT_ACK: listening for syn-ack-ack: incorrect checksum.\n");
 	    *state = STATE_LISTEN;
 	    close(*clientSock);
 	  }
@@ -102,7 +102,7 @@ void ConnectionReceiver(int *state, int *mode, int *clientSock, int serverSock, 
 	      printf("STATE_AWAIT_ACK: Package received not an ack or had incorrect seq.num.. Discarded.\n");
 	    }
 	    else {
-	      printf("STATE_AWAIT_ACK: ACK received, connecting.");
+	      printf("STATE_AWAIT_ACK: ACK received, connecting.\n");
 	      *lastSeqReceived = packageReceived.seq;
 	      *state = STATE_CONNECTED;
 	    }
@@ -116,7 +116,8 @@ void ConnectionReceiver(int *state, int *mode, int *clientSock, int serverSock, 
       printf("STATE_CONNECTED: syn-ack-ack received. Going to MODE_CONNECTED.\n");
       *mode = MODE_CONNECTED;
       *state = RESET;
-      sendWindow = AllocateWindow(*windowSize);
+      //      sendWindow = AllocateWindow(*windowSize);
+      //      ZeroWindow(sendWindow, *windowSize);
       FD_SET(*clientSock, read_fd);
       FD_SET(*clientSock, write_fd);
       return;

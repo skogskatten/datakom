@@ -133,7 +133,7 @@ void TeardownSender(int *state, int *mode, int writeSock, int readSock, fd_set w
 void TeardownReceiver(int *state, int *mode, int writeSock, int readSock, fd_set write_fd, fd_set read_fd, int *lastSeqSent, int *lastSeqReceived, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
 
 /* Listens for incoming data from connected client/server, send ACK if apropriate (WARNING! Contains no actual sliding.) */
-void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
+void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr, int *teardownSenderMode);
 
 /* Sends data to connected client/server. Contains the sliding window. */
 void SlidingSender(char *msg, int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, fd_set write_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
@@ -167,6 +167,9 @@ rtp GetFromWindow(rtp *window, int windowSize, unsigned int seqToGet);
 
 /* Resends all rtp in the window. */
 int ResendWindow(rtp *window, int windowSize, int sockfd, struct sockaddr_in *remoteAddr);
+
+/* Zeroes all seq.num. in window, effectively emptying the window. */
+int ZeroWindow(rtp *window, int windowSize);
 
 /* Uses malloc to allocate and then initialise the server window. */
 rtp *AllocateWindow(int windowSize);

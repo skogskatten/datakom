@@ -9,6 +9,7 @@ int main(int argc, char *argv[]) {
   int sockfd, retval, mode, state;
   int lastSeqSent = 0, lastSeqReceived = 0;
   int timeoutCounter = 0;
+  int teardownSenderMode = 1;
   int windowSize = WINDOW_SIZE;
   
   char buffer[MAXLINE];
@@ -85,16 +86,21 @@ int main(int argc, char *argv[]) {
 
     ConnectionSender(&state, &mode, sockfd, read_fd, write_fd, &lastSeqReceived, &lastSeqSent, windowSize, &s_addr, &c_addr);
 
+    retval = ZeroWindow(sendWindow, windowSize);
+    printf("MODE_CONNECTED: Zero'd %d slots.\n", retval);
+    
   case MODE_CONNECTED :
     printf("MODE: MODE_CONNECTED.\n");
     while (mode == MODE_CONNECTED) {
 
       switch(state) {
       case STATE_LISTEN:
-	SlidingReceiver(&timeoutCounter, &state, &mode, sockfd, sockfd, read_fd, &lastSeqReceived, &lastSeqSent, windowSize, sendWindow, &s_addr, &c_addr);
+	printf("Client, going into SlidingReceiver().\n");
+	SlidingReceiver(&timeoutCounter, &state, &mode, sockfd, sockfd, read_fd, &lastSeqReceived, &lastSeqSent, windowSize, sendWindow, &s_addr, &c_addr, &teardownSenderMode);
 	break;
 	
       case STATE_SEND:
+	printf("Client, going into SlidingSender().\n");
 	SlidingSender(msg, &timeoutCounter, &state, &mode, sockfd, sockfd, read_fd, write_fd, &lastSeqReceived, &lastSeqSent, windowSize, sendWindow, &s_addr, &c_addr);
 	      
 	printf("Continue?");
@@ -102,13 +108,21 @@ int main(int argc, char *argv[]) {
 	if(strcmp("FIN", input) == 0) {
 	  mode = MODE_TEARDOWN;
 	}
+	else
+	  state = STATE_LISTEN;
       }
     }
 
   case MODE_TEARDOWN :
-    
-    TeardownSender(&state, &mode, sockfd, sockfd, write_fd, read_fd, &lastSeqSent, &lastSeqReceived, sendWindow, &s_addr, &c_addr);
-    
+    printf("MODE_TEARDOWN\n");
+    if (teardownSenderMode) {
+      printf("Client, going into TeardownSender.\n");
+      TeardownSender(&state, &mode, sockfd, sockfd, write_fd, read_fd, &lastSeqSent, &lastSeqReceived, sendWindow, &s_addr, &c_addr);
+    }
+    else {
+      printf("Client, going into TeardownReceiver.\n");
+      TeardownReceiver(&state, &mode, sockfd, sockfd, write_fd, read_fd, &lastSeqSent, &lastSeqReceived, &s_addr, &c_addr);
+    }
   }
 
   //  usleep(50000);

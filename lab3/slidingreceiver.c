@@ -1,6 +1,6 @@
 #include "functions.h"
 
-void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr) {
+void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr, int *teardownSenderMode) {
   
   //Receives packet out of order -> resend last ack
   //Receives packet in order -> send new ACK
@@ -20,11 +20,11 @@ void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, 
   active_fd = read_fd;
 	
   switch(select(readSock + 1, &active_fd, NULL, NULL, &read_timeout)) {
-  case -1:
+  case -1: {
     perror("MODE_CONNECTED: Select listening for incoming msgs failed");
     exit(EXIT_FAILURE);
-    
-  case 0: // If timeout
+  }
+  case 0: { // If timeout
     printf("MODE_CONNECTED: ");
     (*timeoutCounter)++;
     if (*timeoutCounter >= 5 && *timeoutCounter < 10) {
@@ -41,31 +41,37 @@ void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, 
       printf("MODE_CONNECTED: Connection timed out; nothing to read. Going to MODE_TEARDOWN (sender), STATE_SHUTTING_DOWN.\n");
       
       *mode = MODE_TEARDOWN;
-      *state = STATE_SHUTTING_DOWN; // This is the state where the server sends a FIN, waits for an ACK and receives or times out, then disconnects.
+      *state = STATE_CONNECTED;
+      *teardownSenderMode = 1;
       
       break;
     }
-    
+  
     *state = STATE_SEND;
     break;
-    
-  default: // If message found.
+  }
+  default: {// If message found.
     *timeoutCounter = 0; // timeout is reset since there is communication
     
     if(recv_rtp(readSock, &packageReceived, remoteAddr) < 0) {
       printf("MODE_CONNECTED: Received, checksum failed.");
-      break;
+      *state = STATE_SEND;
+      return;
     }
     
-    if (packageReceived.flags != FLAG_ACK) {
+    if (packageReceived.flags != FLAG_ACK && packageReceived.flags != FLAG_FIN) {
       // receives packet in order, send ack N
       if (packageReceived.seq == (unsigned int) (*lastSeqReceived) + 1) {
 	(*lastSeqReceived)++;
-	printf("Received: ");
+	printf("SlidingReceiver: Received: \n");
+	print_rtp_header();
 	print_rtp(&packageReceived);
       }
       else {
-	printf("Package received out of order. Discarding package.\n");
+	printf("SlidingReceiver: Package received out of order: ");
+	print_rtp_header();
+	print_rtp(&packageReceived);
+	printf("SlidingReceiver: Discarding package and resending last ACK.\n");
       }
     
 
@@ -77,18 +83,26 @@ void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, 
       CleanRtpData(&packageToSend);
       memcpy(&packageToSend.data, lastSeqReceived, sizeof(*lastSeqReceived));
       
-      printf("Sending ACK:\n");
+      printf("SlidingReceiver: Sending ACK:\n");
+      print_rtp_header();
       print_rtp(&packageToSend);
       
       send_rtp(writeSock, &packageToSend, remoteAddr);
       
+    }
+    else if (packageReceived.flags == FLAG_FIN) {
+      *teardownSenderMode = 0;
+      *lastSeqReceived = packageReceived.seq;
+      printf("SlidingReceiver: FIN received. Going to teardown (receiver).\n");
+      *mode = MODE_TEARDOWN;
+      *state = STATE_CONNECTED;
     }
     else { // If ack
       /* Ta bort varje paket med seq <= ACKad seq från fönster */
       printf("SlidingReceiver: Received ACK with seq.num. %d. Removed %d packages from the sender window.\n", packageReceived.seq, RemoveAcknowledgedFromWindow(sendWindow, windowSize, packageReceived.seq));
     }
   }
-  
+  }
   if(*state == STATE_LISTEN)
     *state = STATE_SEND;
 }

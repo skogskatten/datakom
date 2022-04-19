@@ -2,6 +2,7 @@
 
 void SlidingSender(char *msg, int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, fd_set write_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr) {
 
+  PrintWindow(sendWindow, windowSize);
   if(IsWindowFull(sendWindow, windowSize)) {
     printf("SlidingSender: Sender window is full.\n");
     return;
@@ -38,7 +39,9 @@ void SlidingSender(char *msg, int *timeoutCounter, int *state, int *mode, int wr
     // add to sender window
     AddToWindow(sendWindow, windowSize, packageToSend);
     
-    printf("SlidingSender: Sending seq %d.\n", packageToSend.seq);
+    printf("SlidingSender: Sending:\n");
+    print_rtp_header();
+    print_rtp(&packageToSend);
     
     send_rtp(writeSock, &packageToSend, remoteAddr);
     *state = STATE_LISTEN;

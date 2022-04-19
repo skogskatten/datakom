@@ -150,6 +150,9 @@ void ConnectionSender(int *state, int *mode, int sockfd, fd_set read_fd, fd_set 
 /* Sets the data of a rtp to null */
 void CleanRtpData(rtp *toClean);
 
+/* Prints out the contents of the window. */
+void PrintWindow(rtp *window, int windowSize);
+
 /* Checks if window is full, returns 1 if full, else 0.*/
 int IsWindowFull(rtp *window, int windowSize);
 

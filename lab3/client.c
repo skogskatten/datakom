@@ -6,7 +6,7 @@
  */
 
 int main(int argc, char *argv[]) {
-  int sockfd, retval, mode, state;
+  int sockfd, retval, mode, state, sendTimes = 0;
   int lastSeqSent = 0, lastSeqReceived = 0;
   int timeoutCounter = 0;
   int teardownSenderMode = 1;
@@ -102,10 +102,10 @@ int main(int argc, char *argv[]) {
       case STATE_SEND:
 	printf("Client, going into SlidingSender().\n");
 	SlidingSender(msg, &timeoutCounter, &state, &mode, sockfd, sockfd, read_fd, write_fd, &lastSeqReceived, &lastSeqSent, windowSize, sendWindow, &s_addr, &c_addr);
-	      
-	printf("Continue?");
-	scanf("%s", input);
-	if(strcmp("FIN", input) == 0) {
+	sendTimes++;
+	//	printf("Continue?");
+	//	scanf("%s", input);
+	if(sendTimes >= NUM_MSGS_TO_SEND) {//strcmp("FIN", input) == 0) {
 	  mode = MODE_TEARDOWN;
 	}
 	else
@@ -117,6 +117,7 @@ int main(int argc, char *argv[]) {
     printf("MODE_TEARDOWN\n");
     if (teardownSenderMode) {
       printf("Client, going into TeardownSender.\n");
+      state = STATE_CONNECTED;
       TeardownSender(&state, &mode, sockfd, sockfd, write_fd, read_fd, &lastSeqSent, &lastSeqReceived, sendWindow, &s_addr, &c_addr);
     }
     else {

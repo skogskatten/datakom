@@ -26,6 +26,9 @@
  */
 #define ERROR_CHANCE 0
 
+/* Number of messages to send (from the client) */
+#define NUM_MSGS_TO_SEND 50
+
 /* Data lengths
  * Defines length of package, checksum, header
  * and data arrays in bytes (i.e. UNSIGNED CHARS).
@@ -145,6 +148,7 @@ void ConnectionReceiver(int *state, int *mode, int *clientSock, int serverSock, 
 void ConnectionSender(int *state, int *mode, int sockfd, fd_set read_fd, fd_set write_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
 
 
+
 /* Helper functions */
 
 /* Sets the data of a rtp to null */
@@ -167,6 +171,9 @@ int RemoveAcknowledgedFromWindow(rtp *window, int windowSize, unsigned int acked
 
 /* Returns rtp with given sequence number from window. Returns dummy with seq 0 if sequence number is not found. Useful when resending. */
 rtp GetFromWindow(rtp *window, int windowSize, unsigned int seqToGet);
+
+/* Returns 1 if the sequence number was found in the window, else returns 0. */
+int IsInWindow(rtp *window, int windowSize, unsigned int seqToFind);
 
 /* Resends all rtp in the window. */
 int ResendWindow(rtp *window, int windowSize, int sockfd, struct sockaddr_in *remoteAddr);

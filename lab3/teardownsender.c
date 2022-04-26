@@ -17,6 +17,11 @@ void TeardownSender(int *state, int *mode, int writeSock, int readSock, fd_set w
   printf("TeardownSender: MODE_TEARDOWN.\n");
   while(*mode == MODE_TEARDOWN) {
     switch(*state) {
+    default:
+      printf("TeardownSender: undefined STATE. Going to timeout.\n");
+      *state = STATE_TIMEOUT;
+      break;
+      
     case STATE_CONNECTED: {
 
       packageToSend.flags = FLAG_FIN;

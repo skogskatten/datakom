@@ -24,7 +24,7 @@
  * 0 for no errors
  * 1 to 100 for % errors
  */
-#define ERROR_CHANCE 0
+#define ERROR_CHANCE 50
 
 /* Number of messages to send (from the client) */
 #define NUM_MSGS_TO_SEND 50

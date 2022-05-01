@@ -56,7 +56,7 @@ int RemoveFromWindow(rtp *window, int windowSize, unsigned int seqToRemove) {
 int RemoveAcknowledgedFromWindow(rtp *window, int windowSize, unsigned int ackedSeq) {
   int numRemoved = 0;
   for(int i = 0; i < windowSize; i++) {
-    if (window[i].seq <= ackedSeq) {
+    if (window[i].seq <= ackedSeq && window[i].seq > 0) { // Här blir det konstigt.
       RemoveFromWindow(window, windowSize, window[i].seq);
       numRemoved++;
     }
@@ -75,6 +75,14 @@ rtp GetFromWindow(rtp *window, int windowSize, unsigned int seqToGet) {
     }
   }
   return window[i];
+}
+
+int IsInWindow(rtp *window, int windowSize, unsigned int seqToFind) {
+  for (int i = 0; i < windowSize; i++) {
+    if (window[i].seq == seqToFind)
+      return 1;
+  }
+  return 0;
 }
 
 int ResendWindow(rtp *window, int windowSize, int sockfd, struct sockaddr_in *remoteAddr) {
@@ -104,7 +112,12 @@ int ResendWindow(rtp *window, int windowSize, int sockfd, struct sockaddr_in *re
 int ZeroWindow(rtp *window, int windowSize) {
   int numZerod = 0;
   for(int i = 0; i < windowSize; i++) {
+    window[i].flags = '0';
+    window[i].id = '0';
     window[i].seq = 0;
+    window[i].windowsize = '0';
+    memcpy(window[i].data, "NULL", strlen("NULL"));
+    window[i].crc = '0';
     numZerod++;
   }
   return numZerod;

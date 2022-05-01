@@ -62,8 +62,9 @@ void TeardownReceiver(int *state, int *mode, int writeSock, int readSock, fd_set
       read_timeout.tv_usec = 0;
     
       while(*state == STATE_AWAIT_FIN_ACK) {
-	active_fd = read_fd;
-    
+	//active_fd = read_fd;
+	FD_SET(readSock, &active_fd);
+	
 	switch(select(readSock + 1, &active_fd, NULL, NULL, &read_timeout)) {
 	case -1:
 	  perror("STATE_AWAIT_FIN_ACK");

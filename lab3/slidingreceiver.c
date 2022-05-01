@@ -101,7 +101,7 @@ void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, 
       
       /* Ta bort varje paket med seq <= ACKad seq från fönster */
       if (IsInWindow(sendWindow, windowSize, packageReceived.seq)) {
-	printf("SlidingReceiver: Received ACK with seq.num. %d. Removed %d packages from the sender window.\n", packageReceived.seq, RemoveAcknowledgedFromWindow(sendWindow, windowSize, packageReceived.seq));
+	printf("SlidingReceiver: Received ACK with seq.num. %X. Removed %d packages from the sender window.\n", packageReceived.seq, RemoveAcknowledgedFromWindow(sendWindow, windowSize, packageReceived.seq));
       }
       else {
 	printf("SlidingReceiver: Received old seq.num. which means package was lost, resends %d packages from window.\n", ResendWindow(sendWindow, windowSize, writeSock, remoteAddr));

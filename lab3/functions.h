@@ -24,7 +24,10 @@
  * 0 for no errors
  * 1 to 100 for % errors
  */
-#define ERROR_CHANCE 25
+#define ERROR_CHANCE 50
+
+/* Number of messages to send (from the client) */
+#define NUM_MSGS_TO_SEND 50
 
 /* Data lengths
  * Defines length of package, checksum, header
@@ -110,3 +113,73 @@ int recv_rtp(int sockfd, rtp* package, struct sockaddr_in *addr);
 void print_rtp_header();
 
 void print_rtp(rtp *package);
+
+
+
+
+
+#define PORT 5555
+#define MAXLINE 1024
+#define hostNameLength 50
+#define WINDOW_SIZE 5
+#define RESET -1
+#define SHORT_TIMEOUT 1
+#define MEDIUM_TIMEOUT 5
+#define LONG_TIMEOUT 10
+
+/* Mode functions */
+
+/* Teardown mode when started by sending FIN */
+void TeardownSender(int *state, int *mode, int writeSock, int readSock, fd_set write_fd, fd_set read_fd, int *lastSeqSent, int *lastSeqReceived, rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
+
+/* Teardown mode when started by receiving FIN */
+void TeardownReceiver(int *state, int *mode, int writeSock, int readSock, fd_set write_fd, fd_set read_fd, int *lastSeqSent, int *lastSeqReceived, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
+
+/* Listens for incoming data from connected client/server, send ACK if apropriate (WARNING! Contains no actual sliding.) */
+void SlidingReceiver(int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr, int *teardownSenderMode);
+
+/* Sends data to connected client/server. Contains the sliding window. */
+void SlidingSender(char *msg, int *timeoutCounter, int *state, int *mode, int writeSock, int readSock, fd_set read_fd, fd_set write_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize,rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
+
+/* Listens for SYN packages. Loops back to the listening state if connection is not completed. Only returns if an ACK for the SYN-ACK is received. It initialises the window and socket file descriptors if a connection is established. */
+void ConnectionReceiver(int *state, int *mode, int *clientSock, int serverSock, fd_set *read_fd, fd_set *write_fd, int *lastSeqReceived, int *lastSeqSent, int *windowSize, rtp *sendWindow, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
+
+/* Sends SYN package. Keeps sending and listening for SYN-ACK until one is received. Then sends ACK and goes to MODE_CONNECTED. */
+void ConnectionSender(int *state, int *mode, int sockfd, fd_set read_fd, fd_set write_fd, int *lastSeqReceived, int *lastSeqSent, int windowSize, struct sockaddr_in *remoteAddr, struct sockaddr_in *localAddr);
+
+
+
+/* Helper functions */
+
+/* Sets the data of a rtp to null */
+void CleanRtpData(rtp *toClean);
+
+/* Prints out the contents of the window. */
+void PrintWindow(rtp *window, int windowSize);
+
+/* Checks if window is full, returns 1 if full, else 0.*/
+int IsWindowFull(rtp *window, int windowSize);
+
+/* Adds a package to the sliding window. Used when sending data packages. Returns -1 if no free slot is found, else 0 upon success. */
+int AddToWindow(rtp *window, int windowSize, rtp toAdd);
+
+/* Removes a package (identified by sequence number) from the window (used when ACKs are received) Returns 0 removed correctly, -1 if package was not found. */ 
+int RemoveFromWindow(rtp *window, int windowSize, unsigned int seqToRemove);
+
+/* Removes all packages with a sequence number lower than or equal to ackedSeq from the window. Returns the number of packages removed. */
+int RemoveAcknowledgedFromWindow(rtp *window, int windowSize, unsigned int ackedSeq);
+
+/* Returns rtp with given sequence number from window. Returns dummy with seq 0 if sequence number is not found. Useful when resending. */
+rtp GetFromWindow(rtp *window, int windowSize, unsigned int seqToGet);
+
+/* Returns 1 if the sequence number was found in the window, else returns 0. */
+int IsInWindow(rtp *window, int windowSize, unsigned int seqToFind);
+
+/* Resends all rtp in the window. */
+int ResendWindow(rtp *window, int windowSize, int sockfd, struct sockaddr_in *remoteAddr);
+
+/* Zeroes all seq.num. in window, effectively emptying the window. */
+int ZeroWindow(rtp *window, int windowSize);
+
+/* Uses malloc to allocate and then initialise the server window. */
+rtp *AllocateWindow(int windowSize);

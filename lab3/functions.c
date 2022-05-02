@@ -2,7 +2,8 @@
  * File: functions.c                             *
  * Name: Shared functions        				 *
  * Authors: agn, ark                             *
- * Purpose: Contain shared functions             *
+ * Purpose: Con
+tain shared functions             *
  * ***********************************************/
 
 #include "functions.h"
@@ -167,7 +168,7 @@ int recv_rtp(int sockfd, rtp *package, struct sockaddr_in *addr)
     unsigned char buffer[PACKAGE_LEN];
     
     nOfBytes = recvfrom(sockfd, (unsigned char*)buffer, PACKAGE_LEN, MSG_WAITALL,
-              (struct sockaddr*) addr, &len);
+			(struct sockaddr*) addr, &len); // notera MSG_WAITALL gör inget för datagram (udp). Också värt att fundera på om addr och len borde vara NULL när koppling har etablerats. Vi vill kanske inte att den skall skriva över addr varje gång?
     
     if(nOfBytes < 0)
     {
